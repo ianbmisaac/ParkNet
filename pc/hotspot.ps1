@@ -19,4 +19,15 @@ if ($mgr.TetheringOperationalState -ne [Windows.Networking.NetworkOperators.Teth
 }
 $check = $mgr.GetCurrentAccessPointConfiguration()
 Write-Output ("Hotspot: SSID='" + $check.Ssid + "'  estado=" + $mgr.TetheringOperationalState + "  clientes=" + $mgr.ClientCount)
-Write-Output ("Panel del Arduino en esta red:  http://192.168.137.80  (si no responde, probar la IP en la lista de clientes)")
+
+# descubrir la IP de la placa ParkNet en la red del hotspot (tabla ARP)
+Start-Sleep -Seconds 2
+ping 192.168.137.255 -n 1 -w 700 | Out-Null
+$ipPlaca = (arp -a | Select-String "192.168.137." | Where-Object { $_.Line -notmatch "192\.168\.137\.(1|255) " } |
+  ForEach-Object { ($_.Line.Trim() -split "\s+")[0] }) | Where-Object { $_ -like "192.168.137.*" } | Select-Object -First 1
+if ($ipPlaca) {
+  Write-Output ""
+  Write-Output ("PAGINA DE ParkNet (abrir en el telefono):  http://" + $ipPlaca)
+} else {
+  Write-Output "Placa aun no visible en la red (espera ~30 s tras enchufarla a la corriente y re-ejecute)."
+}

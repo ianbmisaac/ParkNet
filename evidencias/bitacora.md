@@ -105,3 +105,10 @@ Pendientes restantes:
 - Verificado en vivo: reglas OK (lectura de admins permitida, 404 para docs inexistentes; admin.html conecta bien con navegador limpio).
 - Se listaron 3 docs de admins/proyecto: dos con admin=true correctos; el tercero (uid 4g60KzQYg2NX51e65915, creado hoy 06:42) tiene campo admin VACIO (no booleano). Causa del 'ROL: sin acceso'.
 - Fix: editar ese doc en consola y definir admin = booleano true. Limpieza: cuentas probe borradas.
+
+## 2026-11-10 - ADMIN v2: promote por correo + tests del panel anterior
+- Reglas v3 (pendiente publicarlas por el usuario): isAdmin() tambien valida doc admins/<correo en minusculas>; admins pueden crear/borrar docs admins con campos exactos.
+- admin.html: tarjeta 'Administradores' (promover con el correo, quitar, uno nunca se quita a si mismo); rol de sesion ahora mira admins/<uid> Y admins/<correo>.
+- Hardware: nuevas tarjetas 'Tests' (Probar servo, Test de cableado, Test I2C, Volver a sensores, Sincronizar) = cmds test_servo/test_cables/i2c/sensores/sync del firmware.
+- Secciones secRes/secHW ocultas por defecto en admin.html (sin login no se ve ni el shell).
+- Compromiso: 43f6bb0. Pendiente usuario: publicar reglas y F5.

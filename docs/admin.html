@@ -706,9 +706,15 @@ function pinta(id, ocupada, nombre) {
    doc admins/{uid} puede mover el Arduino ===== */
 async function soyAdminAhora() {
   try {
-    if (!user) return false;
-    const d = await db.collection("admins").doc(user.uid).get({ source: "server" });
-    return !!(d.exists && d.data().admin === true);
+    if (!user || !db) return false;
+    // vale el doc admins/<uid> O admins/<correo> (admin promovido por email)
+    const du = await db.collection("admins").doc(user.uid).get({ source: "server" });
+    if (du.exists && du.data().admin === true) return true;
+    if (user.email) {
+      const de = await db.collection("admins").doc(user.email.toLowerCase()).get({ source: "server" });
+      if (de.exists && de.data().admin === true) return true;
+    }
+    return false;
   } catch (e) { return false; }
 }
 

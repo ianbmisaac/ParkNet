@@ -251,7 +251,7 @@
   </div>
 </main>
 
-<script src="./parking-view.js?v=animacion-2"></script>
+<script src="./parking-view.js?v=sensor-p1"></script>
 <script>
 /* ================= Firebase (config del proyecto del amigo) ================= */
 const firebaseConfig = {
@@ -701,8 +701,14 @@ function conectarMqtt() {
     if (t === TOP_S) logM("servo ← " + s);
     if (t === TOP_L) {
       logM("Arduino → " + s);
-      if (s.indexOf("SENSOR:") === 0 && s.indexOf("OCUPADA") !== -1) alarmaLlegada(s);
-      if (s.indexOf("SENSOR:") === 0 && s.indexOf("LIBRE") !== -1) $("alertaChip").style.display = "none";
+      const sensor = s.startsWith("SENSOR:") && s.match(/\b(OCUPADA|LIBRE)\b/);
+      if (sensor) {
+        const ocupada = sensor[1] === "OCUPADA";
+        pinta("p1", ocupada, "P1 (sensor)");
+        window.ParkNetView?.updateP1(ocupada);
+        if (ocupada) alarmaLlegada(s);
+        else $("alertaChip").style.display = "none";
+      }
     }
     if (t === TOP_E) {
       try {

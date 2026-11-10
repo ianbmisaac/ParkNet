@@ -129,7 +129,7 @@
     const fixed = point => point;
     stalls.forEach((stall, index) => {
       const car = cars[index];
-      const reported = synced && car.reported;
+      const reported = car.reported;
       const tint = reported ? (car.to ? "#f48e7f" : "#77ddad") : "#8da0af";
       const fill = reported ? (car.to ? "#473039" : "#233f3c") : "#303f4c";
       floor(stall.x - 1.05, -3.12, 2.1, 2.94, tint);
@@ -167,6 +167,12 @@
   }
 
   window.ParkNetView = {
+    updateP1(occupied) {
+      const car = cars[0];
+      setTarget(car, Number(occupied), performance.now(), reducedMotion.matches);
+      car.reported = true;
+      render();
+    },
     update(state) {
       if (!Array.isArray(state.ocupadas) ||
           ![0, 1].includes(state.ocupadas[0]) || ![0, 1].includes(state.ocupadas[1]) ||
@@ -178,7 +184,7 @@
       cars.forEach((car, index) => {
         const target = state.ocupadas[index];
         const reported = target === 0 || target === 1;
-        setTarget(car, reported ? target : 0, now, immediate || !reported || !car.reported);
+        setTarget(car, reported ? target : 0, now, reducedMotion.matches || !reported || !car.reported);
         car.reported = reported;
       });
       const label = cars[2].reported ? "Sincronizado con la placa" : "P3 sin datos de la placa";
@@ -188,6 +194,7 @@
     },
     disconnect() {
       synced = false;
+      cars.forEach(car => { car.reported = false; });
       status.textContent = "Esperando datos de la placa";
       render();
     }

@@ -1,0 +1,1121 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1217">
+  <title>Parking S2 | Modelo 3D</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1217;
+      --surface: #111d24;
+      --surface2: #172831;
+      --line: rgba(192, 220, 218, .13);
+      --text: #f2f7f5;
+      --muted: #91a8a5;
+      --mint: #73edbd;
+      --mint-strong: #35d99a;
+      --coral: #ff8274;
+      --blue: #2d72a5;
+      font-family: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { min-width: 320px; background: var(--bg); }
+    body {
+      min-height: 100vh; margin: 0; color: var(--text);
+      background:
+        radial-gradient(ellipse at 15% 0%, rgba(39, 130, 114, .16), transparent 34rem),
+        radial-gradient(ellipse at 100% 34%, rgba(40, 91, 126, .13), transparent 31rem),
+        var(--bg);
+    }
+    button { font: inherit; }
+    button:focus-visible, .parking-spot:focus-visible { outline: 3px solid var(--mint); outline-offset: 4px; }
+    .shell { width: min(1120px, 100% - 40px); margin: 0 auto; padding: 28px 0 34px; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 22px; }
+    .brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
+    .brand-mark {
+      display: grid; place-items: center; width: 46px; height: 46px; flex: 0 0 auto;
+      border: 1px solid rgba(115, 237, 189, .36); border-radius: 14px;
+      color: var(--mint); background: linear-gradient(145deg, #194138, #152a32);
+      box-shadow: 0 9px 24px rgba(0,0,0,.2); font-size: 1.3rem; font-weight: 850;
+    }
+    .eyebrow { margin: 0 0 3px; color: var(--mint); font-size: .66rem; font-weight: 750; letter-spacing: .16em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: 1.14rem; letter-spacing: -.035em; }
+    .brand-sub { margin: 3px 0 0; color: var(--muted); font-size: .8rem; }
+    .top-meta { display: flex; align-items: center; gap: 9px; }
+    .live-pill, .clock {
+      display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 13px;
+      border: 1px solid var(--line); border-radius: 999px; background: rgba(17,29,36,.75);
+      color: var(--muted); font-size: .76rem; white-space: nowrap;
+    }
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--mint-strong); box-shadow: 0 0 12px rgba(53,217,154,.7); }
+    .clock { color: var(--text); font-size: .86rem; font-variant-numeric: tabular-nums; }
+
+    .summary {
+      display: flex; align-items: center; justify-content: space-between; gap: 20px;
+      margin-bottom: 16px; padding: 19px 22px; border: 1px solid rgba(115,237,189,.2);
+      border-radius: 19px; background: linear-gradient(110deg, rgba(19,55,47,.92), rgba(17,32,39,.94));
+    }
+    .summary-main { display: flex; align-items: center; gap: 15px; min-width: 0; }
+    .summary-count {
+      display: grid; place-items: center; width: 58px; height: 58px; flex: 0 0 auto;
+      border: 1px solid rgba(115,237,189,.24); border-radius: 17px; color: var(--mint);
+      background: rgba(115,237,189,.09); font-size: 1.8rem; font-weight: 800; font-variant-numeric: tabular-nums;
+    }
+    .summary-label { margin: 0 0 3px; color: #bad0c9; font-size: .75rem; font-weight: 650; }
+    .summary h2 { margin: 0; font-size: 1.12rem; letter-spacing: -.03em; }
+    .summary-note { margin: 4px 0 0; color: var(--muted); font-size: .76rem; line-height: 1.4; }
+    .summary-right { display: flex; align-items: center; gap: 15px; }
+    .meter { display: flex; gap: 6px; }
+    .meter-segment { width: 32px; height: 7px; border-radius: 99px; background: rgba(210,230,223,.16); }
+    .meter-segment.is-free { background: var(--mint-strong); box-shadow: 0 0 10px rgba(53,217,154,.27); }
+    .meter-segment.is-occupied { background: var(--coral); }
+    .count-caption { color: #c7d7d2; font-size: .76rem; white-space: nowrap; }
+
+    .model-panel {
+      overflow: hidden; border: 1px solid var(--line); border-radius: 24px;
+      background: linear-gradient(145deg, rgba(20,34,41,.98), rgba(15,25,31,.98));
+      box-shadow: 0 24px 65px rgba(0,0,0,.2);
+    }
+    .model-head {
+      display: flex; justify-content: space-between; align-items: center; gap: 14px;
+      padding: 18px 21px 15px; border-bottom: 1px solid rgba(192,220,218,.08);
+    }
+    .model-title { display: flex; align-items: center; gap: 10px; }
+    .model-title svg { width: 19px; height: 19px; color: var(--mint); }
+    .model-title h3 { margin: 0; font-size: .91rem; letter-spacing: -.02em; }
+    .model-subtitle { margin: 4px 0 0 29px; color: var(--muted); font-size: .73rem; }
+    .legend { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: .72rem; }
+    .legend span { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mint-strong); }
+    .legend-dot.busy { background: var(--coral); }
+    .scene-wrap {
+      position: relative; padding: 10px clamp(6px, 2.5vw, 24px) 0;
+      background:
+        radial-gradient(ellipse at 50% 80%, rgba(51,108,123,.12), transparent 52%),
+        #101a20;
+    }
+    .garage { display: block; width: 100%; height: auto; max-height: 590px; margin: 0 auto; }
+    .garage .scene-shadow { fill: rgba(0,0,0,.38); }
+    .garage .outer-shell { fill: #101c22; }
+    .garage .back-wall { fill: url(#backWall); stroke: rgba(226,237,237,.18); stroke-width: 2; }
+    .garage .side-wall { fill: url(#sideWall); stroke: rgba(226,237,237,.13); stroke-width: 2; }
+    .garage .blue-band { fill: url(#blueBand); }
+    .garage .navy-trim { fill: #142b54; }
+    .garage .floor { fill: url(#floorGradient); stroke: rgba(255,255,255,.18); stroke-width: 2; }
+    .garage .floor-sheen { fill: none; stroke: rgba(255,255,255,.055); stroke-width: 1.5; }
+    .garage .parking-spot { cursor: pointer; outline: none; }
+    .garage .spot-plane { fill: rgba(115,237,189,.025); stroke: rgba(241,249,247,.88); stroke-width: 4; transition: fill .2s, stroke .2s; }
+    .garage .spot-inner { fill: none; stroke: rgba(255,255,255,.13); stroke-width: 1.5; }
+    .garage .parking-spot:hover .spot-plane,
+    .garage .parking-spot:focus .spot-plane { fill: rgba(115,237,189,.12); stroke: #b5ffe2; }
+    .garage .parking-spot.is-occupied .spot-plane { fill: rgba(255,130,116,.07); stroke: rgba(255,224,219,.88); }
+    .garage .sensor { fill: rgba(53,217,154,.25); stroke: var(--mint-strong); stroke-width: 2; transition: fill .2s, stroke .2s; }
+    .garage .sensor-light { fill: var(--mint); filter: url(#glowMint); }
+    .garage .parking-spot.is-occupied .sensor { fill: rgba(255,130,116,.19); stroke: var(--coral); }
+    .garage .parking-spot.is-occupied .sensor-light { fill: var(--coral); filter: url(#glowRed); }
+    .garage .spot-code { fill: #eef8f4; font-size: 20px; font-weight: 800; letter-spacing: 1px; text-anchor: middle; }
+    .garage .spot-state { fill: var(--mint); font-size: 12px; font-weight: 800; letter-spacing: 1.4px; text-anchor: middle; }
+    .garage .parking-spot.is-occupied .spot-state { fill: var(--coral); }
+    .garage .car-model { opacity: 0; transform-box: fill-box; transform-origin: center; transform: scale(.82); transition: opacity .22s ease, transform .22s ease; pointer-events: none; filter: drop-shadow(0 9px 8px rgba(0,0,0,.36)); }
+    .garage .parking-spot.is-occupied .car-model { opacity: 1; transform: scale(1); }
+    .garage .car-body { fill: url(#carPaint); stroke: #a9c9cc; stroke-width: 2; }
+    .garage .car-glass { fill: #193b4b; stroke: #7ba8b5; stroke-width: 1.5; }
+    .garage .car-highlight { fill: rgba(225,245,246,.17); }
+    .garage .car-wheel { fill: #101619; stroke: #54656a; stroke-width: 2; }
+    .garage .lane-arrow { fill: none; stroke: rgba(232,239,232,.58); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+    .garage .lane-label { fill: #e2e7df; font-size: 12px; font-weight: 800; letter-spacing: 2px; text-anchor: middle; }
+    .garage .gate-line { stroke: #d8e1df; stroke-width: 7; stroke-linecap: round; }
+    .garage .gate-post { fill: #182832; stroke: #a9bdba; stroke-width: 2; }
+    .garage .barrier-stripe { fill: none; stroke: #ed7369; stroke-width: 6; stroke-linecap: round; stroke-dasharray: 8 9; }
+    .scene-caption { display: flex; justify-content: space-between; gap: 12px; padding: 0 21px 15px; color: var(--muted); font-size: .7rem; }
+    .scene-caption strong { color: #cfdfda; font-weight: 650; }
+
+    .controls { margin-top: 17px; }
+    .controls-heading { margin: 0 0 10px 2px; color: var(--muted); font-size: .7rem; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+    .buttons { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; }
+    .btn {
+      display: inline-flex; justify-content: center; align-items: center; gap: 9px; min-height: 49px; padding: 0 17px;
+      border: 1px solid var(--line); border-radius: 13px; color: var(--text); background: var(--surface);
+      font-size: .83rem; font-weight: 700; cursor: pointer; transition: transform .15s, border-color .15s, background .15s, opacity .15s;
+    }
+    .btn:hover:not(:disabled) { transform: translateY(-1px); border-color: rgba(115,237,189,.46); background: var(--surface2); }
+    .btn:active:not(:disabled) { transform: translateY(0); }
+    .btn svg { width: 18px; height: 18px; flex: 0 0 auto; }
+    .btn-primary { border-color: var(--mint); color: #09251b; background: var(--mint); }
+    .btn-primary:hover:not(:disabled) { border-color: #a0f6d3; background: #a0f6d3; }
+    .btn-primary svg { color: #09251b; }
+    .btn-secondary { color: var(--mint); }
+    .btn-quiet { color: #c4d1cd; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .service-row { display: flex; align-items: center; justify-content: space-between; gap: 15px; margin-top: 14px; padding: 12px 15px; border: 1px solid var(--line); border-radius: 13px; background: rgba(17,29,36,.65); }
+    .service-copy { display: flex; align-items: center; gap: 9px; color: #dbe8e3; font-size: .76rem; font-weight: 650; }
+    .service-copy svg { width: 17px; height: 17px; color: var(--mint); }
+    .service-meta { color: var(--muted); font-size: .71rem; }
+    .service-row.is-full .service-copy svg { color: var(--coral); }
+    .footer { display: flex; justify-content: space-between; gap: 12px; margin-top: 15px; color: #748985; font-size: .7rem; }
+
+    @media (max-width: 680px) {
+      .shell { width: min(100% - 28px, 620px); padding-top: 19px; }
+      .summary { align-items: flex-start; flex-direction: column; gap: 14px; padding: 16px; }
+      .summary-right { justify-content: space-between; width: 100%; padding-left: 73px; }
+      .model-head { align-items: flex-start; flex-direction: column; gap: 11px; padding: 15px 16px 13px; }
+      .model-subtitle { margin-left: 29px; }
+      .legend { padding-left: 29px; }
+      .scene-caption { padding: 0 14px 13px; font-size: .64rem; }
+      .buttons { grid-template-columns: 1fr 1fr; }
+      .btn-quiet { grid-column: 1 / -1; }
+    }
+    @media (max-width: 430px) {
+      .topbar { align-items: flex-start; }
+      .brand-mark { width: 40px; height: 40px; border-radius: 12px; }
+      .brand-sub { font-size: .72rem; }
+      .top-meta { align-items: flex-end; flex-direction: column; gap: 6px; }
+      .live-pill, .clock { min-height: 31px; padding: 0 9px; font-size: .67rem; }
+      .clock { font-size: .76rem; }
+      .summary-count { width: 50px; height: 50px; border-radius: 15px; font-size: 1.55rem; }
+      .summary-right { padding-left: 65px; }
+      .meter { gap: 4px; }
+      .meter-segment { width: 24px; }
+      .count-caption { font-size: .69rem; }
+      .scene-wrap { padding: 4px 1px 0; }
+      .scene-caption { flex-direction: column; gap: 4px; }
+      .service-row { align-items: flex-start; flex-direction: column; gap: 5px; }
+      .footer { flex-direction: column; gap: 5px; }
+      .btn { min-height: 46px; padding: 0 9px; font-size: .75rem; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
+    .auth-button, .logout-button {
+      min-height: 36px; padding: 0 12px; border: 1px solid rgba(115,237,189,.28); border-radius: 999px;
+      color: var(--mint); background: rgba(17,29,36,.8); font-size: .74rem; font-weight: 700; cursor: pointer;
+    }
+    .logout-button { color: #c4d1cd; border-color: var(--line); }
+    .user-badge { max-width: 150px; overflow: hidden; color: #dce9e4; font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
+    .page-tabs { display: flex; gap: 7px; width: fit-content; margin: 0 0 16px; padding: 5px; border: 1px solid var(--line); border-radius: 14px; background: rgba(17,29,36,.68); }
+    .page-tab { min-height: 38px; padding: 0 16px; border: 0; border-radius: 10px; color: var(--muted); background: transparent; font-size: .8rem; font-weight: 700; cursor: pointer; }
+    .page-tab[aria-selected="true"] { color: #09251b; background: var(--mint); }
+    #dashboardView[hidden], .booking-view[hidden] { display: none !important; }
+    .booking-intro { margin: 5px 2px 16px; }
+    .booking-intro h2 { margin: 0; font-size: 1.45rem; letter-spacing: -.045em; }
+    .booking-intro p { margin: 7px 0 0; color: var(--muted); font-size: .82rem; }
+    .booking-grid { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(260px,.95fr); gap: 14px; align-items: start; }
+    .booking-card { min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: rgba(17,29,36,.82); }
+    .booking-card h3 { margin: 0 0 15px; font-size: .92rem; }
+    .booking-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0; padding: 0; border: 0; }
+    .field { display: grid; gap: 7px; color: #c8d8d3; font-size: .75rem; font-weight: 650; }
+    .field input { width: 100%; min-height: 43px; padding: 0 11px; border: 1px solid var(--line); border-radius: 11px; color: var(--text); background: #0c171c; font: inherit; font-size: .82rem; color-scheme: dark; }
+    .duration-note { margin: 11px 0 17px; color: var(--muted); font-size: .73rem; }
+    .space-picker { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0 15px; }
+    .space-choice { display: grid; gap: 4px; justify-items: start; min-height: 68px; padding: 11px; border: 1px solid var(--line); border-radius: 12px; color: var(--text); background: #0d191f; text-align: left; cursor: pointer; }
+    .space-choice strong { font-size: .84rem; }
+    .space-choice span { color: var(--mint); font-size: .68rem; }
+    .space-choice[aria-pressed="true"] { border-color: var(--mint); background: rgba(115,237,189,.1); }
+    .space-choice.is-taken { opacity: .5; cursor: not-allowed; }
+    .reserve-button, .auth-submit { min-height: 44px; border: 1px solid var(--mint); border-radius: 11px; color: #09251b; background: var(--mint); font-weight: 800; cursor: pointer; }
+    .reserve-button { width: 100%; }
+    .reserve-button:disabled, .auth-submit:disabled { opacity: .45; cursor: not-allowed; }
+    .booking-status, .auth-message { min-height: 1.25em; margin: 10px 0 0; color: var(--muted); font-size: .74rem; line-height: 1.45; }
+    .booking-status.is-error, .auth-message.is-error { color: var(--coral); }
+    .booking-status.is-success { color: var(--mint); }
+    .login-prompt, .config-warning { margin-bottom: 14px; padding: 13px; border: 1px solid rgba(115,237,189,.17); border-radius: 12px; background: rgba(115,237,189,.05); }
+    .login-prompt p, .config-warning { color: #c6d7d1; font-size: .75rem; line-height: 1.5; }
+    .login-prompt p { margin: 0 0 10px; }
+    .firebase-note { margin: 12px 0 0; color: var(--muted); font-size: .72rem; line-height: 1.5; }
+    .availability-list, .reservation-list { display: grid; gap: 8px; }
+    .availability-item, .reservation-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid rgba(192,220,218,.1); border-radius: 11px; background: rgba(9,19,24,.55); }
+    .availability-item strong, .reservation-details strong { font-size: .78rem; }
+    .availability-item span { color: var(--mint); font-size: .72rem; font-weight: 700; }
+    .availability-item.is-taken span { color: var(--coral); }
+    .reservation-details { display: grid; gap: 4px; }
+    .reservation-details span, .empty-reservations { color: var(--muted); font-size: .72rem; }
+    .cancel-button { min-height: 33px; padding: 0 10px; border: 1px solid rgba(255,130,116,.3); border-radius: 9px; color: var(--coral); background: rgba(255,130,116,.06); font-size: .7rem; font-weight: 700; cursor: pointer; }
+    .auth-dialog { width: min(430px, calc(100% - 28px)); padding: 24px; border: 1px solid rgba(115,237,189,.24); border-radius: 20px; color: var(--text); background: #111d24; box-shadow: 0 30px 100px rgba(0,0,0,.55); }
+    .auth-dialog::backdrop { background: rgba(3,9,12,.72); backdrop-filter: blur(5px); }
+    .dialog-head { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 16px; }
+    .dialog-head h2 { margin: 0; font-size: 1.17rem; }
+    .dialog-head p { margin: 5px 0 0; color: var(--muted); font-size: .75rem; }
+    .dialog-close { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 10px; color: #d6e2de; background: #0c171c; cursor: pointer; }
+    .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 14px; padding: 4px; border-radius: 11px; background: #0a1419; }
+    .auth-tab { min-height: 35px; border: 0; border-radius: 8px; color: var(--muted); background: transparent; font-size: .76rem; font-weight: 700; cursor: pointer; }
+    .auth-tab[aria-selected="true"] { color: var(--text); background: #20343b; }
+    .auth-form { display: grid; gap: 11px; }
+    .auth-divider { display: flex; align-items: center; gap: 10px; margin: 14px 0 11px; color: var(--muted); font-size: .68rem; }
+    .auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+    .google-button {
+      display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 44px;
+      border: 1px solid #d5dfdc; border-radius: 11px; color: #202b28; background: #f7faf9;
+      font-size: .8rem; font-weight: 750; cursor: pointer; transition: background .15s, transform .15s, opacity .15s;
+    }
+    .google-button:hover:not(:disabled) { transform: translateY(-1px); background: #fff; }
+    .google-button:disabled { opacity: .55; cursor: wait; }
+    .google-mark { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: #4285f4; background: #fff; font: 800 17px/1 Arial, sans-serif; }
+    .field[hidden] { display: none !important; }
+    .config-warning { margin: 12px 0 0; border-color: rgba(255,196,111,.2); color: #e4c997; background: rgba(255,196,111,.06); }
+    .garage .parking-spot.is-selected .spot-plane { stroke: #adffe0; stroke-width: 6; }
+    @media (max-width: 680px) {
+      .booking-grid { grid-template-columns: 1fr; }
+      .booking-card { padding: 16px; }
+      .page-tabs { width: 100%; }
+      .page-tab { flex: 1; }
+      .user-badge { max-width: 90px; }
+      .auth-button, .logout-button { padding: 0 9px; font-size: .66rem; }
+    }
+    @media (max-width: 430px) {
+      .booking-fields { grid-template-columns: 1fr; }
+      .reservation-item { align-items: flex-start; flex-direction: column; }
+      .cancel-button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">P</div>
+        <div>
+          <p class="eyebrow">Panel de disponibilidad</p>
+          <h1>Parking S2</h1>
+          <p class="brand-sub">Vista 3D simplificada del nivel -2</p>
+        </div>
+      </div>
+      <div class="top-meta">
+        <button class="auth-button" id="authButton" type="button">Iniciar sesión</button>
+        <span class="user-badge" id="userBadge" hidden></span>
+        <button class="logout-button" id="logoutButton" type="button" hidden>Cerrar sesión</button>
+        <div class="live-pill"><span class="live-dot" aria-hidden="true"></span>En tiempo real</div>
+        <time class="clock" id="hora" aria-label="Hora actual"></time>
+      </div>
+    </header>
+
+    <nav class="page-tabs" aria-label="Secciones del estacionamiento">
+      <button class="page-tab" id="tabDashboard" type="button" aria-selected="true">Estacionamiento</button>
+      <button class="page-tab" id="tabBooking" type="button" aria-selected="false">Reservar</button>
+    </nav>
+
+    <section id="dashboardView">
+    <section class="summary" aria-labelledby="titulo">
+      <div class="summary-main">
+        <div class="summary-count" id="libres">3</div>
+        <div>
+          <p class="summary-label">Lugares disponibles</p>
+          <h2 id="titulo" aria-live="polite">Hay 3 lugares disponibles</h2>
+          <p class="summary-note" id="sub">Selecciona un espacio del modelo para cambiar su estado.</p>
+        </div>
+      </div>
+      <div class="summary-right">
+        <div class="meter" id="seg" role="img" aria-label="3 de 3 espacios disponibles"></div>
+        <span class="count-caption" id="resumen">3 de 3 libres</span>
+      </div>
+    </section>
+
+    <section class="model-panel" aria-labelledby="modelTitle">
+      <div class="model-head">
+        <div>
+          <div class="model-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 9-5 9 5-9 5-9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></svg>
+            <h3 id="modelTitle">Modelo del estacionamiento</h3>
+          </div>
+          <p class="model-subtitle">Toca uno de los espacios para alternar su estado</p>
+        </div>
+        <div class="legend" aria-label="Leyenda">
+          <span><i class="legend-dot"></i>Disponible</span>
+          <span><i class="legend-dot busy"></i>Ocupado</span>
+        </div>
+      </div>
+
+      <div class="scene-wrap">
+        <svg class="garage" id="garage" viewBox="0 0 960 570" role="group" aria-labelledby="sceneTitle sceneDesc">
+          <title id="sceneTitle">Modelo tridimensional simplificado de Parking S2</title>
+          <desc id="sceneDesc">Tres espacios frente a un muro azul y blanco, con vía de circulación y acceso en la abertura del lado derecho, junto a una barrera. Cada espacio se puede seleccionar.</desc>
+          <defs>
+            <linearGradient id="backWall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e5e9e8"/><stop offset=".62" stop-color="#d4dcdd"/><stop offset="1" stop-color="#bfcbd0"/></linearGradient>
+            <linearGradient id="sideWall" x1="0" y1="0" x2="1" y2=".4"><stop offset="0" stop-color="#aebdc4"/><stop offset=".55" stop-color="#d3dcdf"/><stop offset="1" stop-color="#b8c8cd"/></linearGradient>
+            <linearGradient id="blueBand" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#327eae"/><stop offset="1" stop-color="#205987"/></linearGradient>
+            <linearGradient id="floorGradient" x1="0" y1="0" x2=".8" y2="1"><stop offset="0" stop-color="#717d84"/><stop offset=".5" stop-color="#59636a"/><stop offset="1" stop-color="#424d55"/></linearGradient>
+            <linearGradient id="carPaint" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d9e7e8"/><stop offset=".45" stop-color="#8eabb3"/><stop offset="1" stop-color="#526f7a"/></linearGradient>
+            <filter id="glowMint" x="-200%" y="-200%" width="400%" height="400%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <filter id="glowRed" x="-200%" y="-200%" width="400%" height="400%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+
+          <ellipse class="scene-shadow" cx="480" cy="494" rx="430" ry="38"/>
+          <path class="outer-shell" d="M42 448 130 119 188 62 794 62 850 119 918 448 884 480 67 480Z"/>
+
+          <!-- Muro posterior y su franja azul, como en la maqueta de referencia -->
+          <path class="back-wall" d="M166 72 794 72 794 231 166 231Z"/>
+          <path class="navy-trim" d="M166 181 794 181 794 196 166 196Z"/>
+          <path class="blue-band" d="M166 196 794 196 794 231 166 231Z"/>
+
+<!-- Muros laterales: las franjas siguen la perspectiva y coinciden con el muro posterior -->
+          <path class="side-wall" d="M166 72 78 137 45 456 166 231Z"/>
+          <path class="navy-trim" d="M166 181 55 356 52 386 166 196Z"/>
+          <path class="blue-band" d="M166 196 52 386 45 456 166 231Z"/>
+
+          <!-- Muro derecho con abertura lateral para el acceso -->
+          <path class="side-wall" d="M794 72 857 119 881 393 794 231Z"/>
+          <path class="navy-trim" d="M794 181 873 307 876 333 794 196Z"/>
+          <path class="blue-band" d="M794 196 876 333 881 393 794 231Z"/>
+          <path class="side-wall" d="M875 132 882 137 915 456 905 438Z"/>
+          <path class="navy-trim" d="M875 342 882 356 884 386 876 371Z"/>
+          <path class="blue-band" d="M876 371 884 386 915 456 905 438Z"/>
+
+          <!-- Piso en perspectiva -->
+          <path class="floor" d="M166 231 794 231 915 456 45 456Z"/>
+          <path class="floor-sheen" d="M166 246 794 246M110 426 850 426"/>
+          <path class="floor-sheen" d="M205 238 128 448M750 238 832 448"/>
+
+          <!-- Línea de pared y tres espacios delimitados -->
+          <path d="M198 245 762 245" fill="none" stroke="#eaf0ec" stroke-width="4" opacity=".9"/>
+          <g class="parking-spot" data-slot="0" role="button" tabindex="0" aria-pressed="false" aria-label="Espacio A1, disponible. Selecciona para cambiar estado">
+            <path class="spot-plane" d="M202 250 392 250 408 360 161 360Z"/>
+            <path class="spot-inner" d="M211 258 383 258 396 351 173 351Z"/>
+            <ellipse class="sensor" cx="284" cy="326" rx="45" ry="12"/>
+            <circle class="sensor-light" cx="284" cy="326" r="5"/>
+            <g class="car-model" transform="translate(292 298)">
+              <ellipse cx="0" cy="8" rx="42" ry="61" fill="rgba(0,0,0,.34)"/>
+              <rect class="car-wheel" x="-38" y="-34" width="13" height="35" rx="6"/>
+              <rect class="car-wheel" x="25" y="-34" width="13" height="35" rx="6"/>
+              <rect class="car-wheel" x="-38" y="18" width="13" height="35" rx="6"/>
+              <rect class="car-wheel" x="25" y="18" width="13" height="35" rx="6"/>
+              <path class="car-body" d="M0-65C-18-65-28-55-32-39L-40-7-40 37C-40 51-29 61-16 63L16 63C29 61 40 51 40 37L40-7 32-39C28-55 18-65 0-65Z"/>
+              <path class="car-glass" d="M-24-34Q-20-48-10-50H10Q20-48 24-34L28-10H-28Z"/>
+              <path class="car-glass" d="M-28 1H28V28Q26 39 15 42H-15Q-26 39-28 28Z"/>
+              <path class="car-highlight" d="M-29-29  -35-5V28L-30 37Z"/>
+              <path d="M-20-57Q0-64 20-57" fill="none" stroke="#f2fbfa" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+              <path d="M-23 52H-12M12 52H23" stroke="#f4d1b0" stroke-width="5" stroke-linecap="round"/>
+            </g>
+            <text class="spot-code" x="284" y="382">A1</text>
+            <text class="spot-state" data-status x="284" y="400">DISPONIBLE</text>
+          </g>
+
+          <g class="parking-spot" data-slot="1" role="button" tabindex="0" aria-pressed="false" aria-label="Espacio A2, disponible. Selecciona para cambiar estado">
+            <path class="spot-plane" d="M392 250 584 250 620 360 408 360Z"/>
+            <path class="spot-inner" d="M401 258 576 258 610 351 416 351Z"/>
+            <ellipse class="sensor" cx="510" cy="326" rx="45" ry="12"/>
+            <circle class="sensor-light" cx="510" cy="326" r="5"/>
+            <g class="car-model" transform="translate(510 298)">
+              <ellipse cx="0" cy="8" rx="42" ry="61" fill="rgba(0,0,0,.34)"/>
+              <rect class="car-wheel" x="-38" y="-34" width="13" height="35" rx="6"/>
+              <rect class="car-wheel" x="25" y="-34" width="13" height="35" rx="6"/>
+              <rect class="car-wheel" x="-38" y="18" width="13" height="35" rx="6"/>
+              <rect class="car-wheel" x="25" y="18" width="13" height="35" rx="6"/>
+              <path class="car-body" d="M0-65C-18-65-28-55-32-39L-40-7-40 37C-40 51-29 61-16 63L16 63C29 61 40 51 40 37L40-7 32-39C28-55 18-65 0-65Z"/>
+              <path class="car-glass" d="M-24-34Q-20-48-10-50H10Q20-48 24-34L28-10H-28Z"/>
+              <path class="car-glass" d="M-28 1H28V28Q26 39 15 42H-15Q-26 39-28 28Z"/>
+              <path class="car-highlight" d="M-29-29-35-5V28L-30 37Z"/>
+              <path d="M-20-57Q0-64 20-57" fill="none" stroke="#f2fbfa" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+              <path d="M-23 52H-12M12 52H23" stroke="#f4d1b0" stroke-width="5" stroke-linecap="round"/>
+            </g>
+            <text class="spot-code" x="510" y="382">A2</text>
+            <text class="spot-state" data-status x="510" y="400">DISPONIBLE</text>
+          </g>
+
+          <g class="parking-spot" data-slot="2" role="button" tabindex="0" aria-pressed="false" aria-label="Espacio A3, disponible. Selecciona para cambiar estado">
+            <path class="spot-plane" d="M584 250 762 250 799 360 620 360Z"/>
+            <path class="spot-inner" d="M593 258 754 258 788 351 628 351Z"/>
+            <ellipse class="sensor" cx="700" cy="326" rx="45" ry="12"/>
+            <circle class="sensor-light" cx="700" cy="326" r="5"/>
+            <g class="car-model" transform="translate(700 298)">
+              <ellipse cx="0" cy="8" rx="42" ry="61" fill="rgba(0,0,0,.34)"/>
+              <rect class="car-wheel" x="-38" y="-34" width="13" height="35" rx="6"/>
+              <rect class="car-wheel" x="25" y="-34" width="13" height="35" rx="6"/>
+              <rect class="car-wheel" x="-38" y="18" width="13" height="35" rx="6"/>
+              <rect class="car-wheel" x="25" y="18" width="13" height="35" rx="6"/>
+              <path class="car-body" d="M0-65C-18-65-28-55-32-39L-40-7-40 37C-40 51-29 61-16 63L16 63C29 61 40 51 40 37L40-7 32-39C28-55 18-65 0-65Z"/>
+              <path class="car-glass" d="M-24-34Q-20-48-10-50H10Q20-48 24-34L28-10H-28Z"/>
+              <path class="car-glass" d="M-28 1H28V28Q26 39 15 42H-15Q-26 39-28 28Z"/>
+              <path class="car-highlight" d="M-29-29-35-5V28L-30 37Z"/>
+              <path d="M-20-57Q0-64 20-57" fill="none" stroke="#f2fbfa" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+              <path d="M-23 52H-12M12 52H23" stroke="#f4d1b0" stroke-width="5" stroke-linecap="round"/>
+            </g>
+            <text class="spot-code" x="700" y="382">A3</text>
+            <text class="spot-state" data-status x="700" y="400">DISPONIBLE</text>
+          </g>
+
+<!-- Pasillo central y acceso lateral derecho con barrera -->
+          <path class="lane-arrow" d="M480 438V407M468 419l12-12 12 12"/>
+          <text class="lane-label" x="480" y="463">PASILLO</text>
+          <text class="lane-label" x="909" y="344">ENTRADA</text>
+          <path class="lane-arrow" d="M944 371H868M882 359l-14 12 14 12"/>
+          <g aria-label="Barrera en la entrada derecha">
+            <rect class="gate-post" x="870" y="382" width="18" height="25" rx="4" transform="rotate(-26 879 394.5)"/>
+            <path class="gate-line" d="M883 394 903 433"/>
+            <path class="barrier-stripe" d="M883 394 903 433"/>
+          </g>
+        </svg>
+      </div>
+      <div class="scene-caption">
+        <span><strong>Entrada lateral derecha</strong> · Barrera junto a la abertura</span>
+        <span id="updated">Actualizado hace un momento</span>
+      </div>
+    </section>
+
+    <section class="controls" aria-label="Controles de demostración">
+      <p class="controls-heading">Simulación</p>
+      <div class="buttons">
+        <button class="btn btn-primary" id="llega" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13.5 5 8a2 2 0 0 1 1.9-1.4h10.2A2 2 0 0 1 19 8l2 5.5"/><path d="M3 13.5h18v4a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/><path d="M6 19v1M18 19v1M6.5 15.5h.01M17.5 15.5h.01"/></svg>
+          Simular llegada
+        </button>
+        <button class="btn btn-secondary" id="sale" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15"/><path d="m13 6 6 6-6 6"/><path d="M5 5v14"/></svg>
+          Simular salida
+        </button>
+        <button class="btn btn-quiet" id="reset" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4.8 9A8 8 0 0 1 18 5.8L20 7M4 17v-5h5"/><path d="M19.2 15A8 8 0 0 1 6 18.2L4 17"/></svg>
+          Reiniciar demo
+        </button>
+      </div>
+    </section>
+
+    <div class="service-row" id="estado">
+      <div class="service-copy">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+        <span id="estadoTxt">Todo listo para estacionar</span>
+      </div>
+      <span class="service-meta">Estado de demostración · Sin conexión a sensores</span>
+    </div>
+    </section>
+
+    <section class="booking-view" id="bookingView" hidden>
+      <div class="booking-intro">
+        <h2>Reserva tu espacio</h2>
+        <p>Elige fecha, hora y lugar. Cada reserva ocupa un bloque de una hora.</p>
+      </div>
+      <div class="booking-grid">
+        <form class="booking-card" id="bookingForm">
+          <h3>Detalles de la reserva</h3>
+          <div class="login-prompt" id="loginPrompt">
+            <p>Inicia sesión o crea una cuenta para consultar disponibilidad y reservar.</p>
+            <button class="auth-button" id="bookingLoginButton" type="button">Registrarse / Iniciar sesión</button>
+          </div>
+          <fieldset class="booking-fields" id="bookingFields" disabled>
+            <label class="field">Fecha<input id="bookingDate" type="date" required></label>
+            <label class="field">Hora de inicio<input id="bookingTime" type="time" step="3600" required></label>
+          </fieldset>
+          <p class="duration-note">Duración fija: 1 hora · Hora local</p>
+          <h3>Selecciona un espacio</h3>
+          <div class="space-picker" id="spaceChoices" role="group" aria-label="Selecciona un estacionamiento"></div>
+          <button class="reserve-button" id="reserveButton" type="submit" disabled>Reservar espacio</button>
+          <p class="booking-status" id="bookingStatus" role="status" aria-live="polite"></p>
+          <p class="firebase-note" id="bookingConfigNote"></p>
+        </form>
+        <aside class="booking-card">
+          <h3>Disponibilidad para ese horario</h3>
+          <div class="availability-list" id="availabilityList" aria-live="polite"></div>
+          <p class="firebase-note">La disponibilidad se consulta en Firestore al iniciar sesión.</p>
+        </aside>
+      </div>
+      <section class="booking-card" style="margin-top:14px" aria-labelledby="myReservationsTitle">
+        <h3 id="myReservationsTitle">Mis reservas</h3>
+        <div class="reservation-list" id="reservationList"><p class="empty-reservations">Inicia sesión para ver tus reservas.</p></div>
+      </section>
+    </section>
+
+    <dialog class="auth-dialog" id="authDialog" aria-labelledby="authTitle">
+      <div class="dialog-head">
+        <div><h2 id="authTitle">Tu cuenta de Parking S2</h2><p>Regístrate o inicia sesión para reservar.</p></div>
+        <button class="dialog-close" id="closeAuth" type="button" aria-label="Cerrar">×</button>
+      </div>
+      <div class="auth-tabs" role="tablist" aria-label="Acceso a la cuenta">
+        <button class="auth-tab" id="loginMode" type="button" role="tab" aria-selected="true">Iniciar sesión</button>
+        <button class="auth-tab" id="registerMode" type="button" role="tab" aria-selected="false">Registrarse</button>
+      </div>
+      <form class="auth-form" id="authForm">
+        <label class="field" id="nameField" hidden>Nombre<input id="authName" type="text" autocomplete="name" maxlength="60"></label>
+        <label class="field">Correo electrónico<input id="authEmail" type="email" autocomplete="email" required></label>
+        <label class="field">Contraseña<input id="authPassword" type="password" autocomplete="current-password" minlength="6" required></label>
+        <button class="auth-submit" id="authSubmit" type="submit">Iniciar sesión</button>
+      </form>
+      <div class="auth-divider" aria-hidden="true">o continúa con</div>
+      <button class="google-button" id="googleSignInButton" type="button">
+        <span class="google-mark" aria-hidden="true">G</span>
+        Continuar con Google
+      </button>
+      <p class="auth-message" id="authMessage" role="status" aria-live="polite"></p>
+      <p class="config-warning" id="authConfigWarning"></p>
+    </dialog>
+    <footer class="footer"><span>Parking S2 · Modelo demostrativo</span><span>Los cambios se reinician al recargar la página</span></footer>
+  </main>
+
+  <script>
+    (function () {
+      "use strict";
+      var TOTAL = 3;
+      var ocupados = [false, false, false];
+      var ultimaActualizacion = Date.now();
+      var $ = function (id) { return document.getElementById(id); };
+      var espacios = Array.prototype.slice.call(document.querySelectorAll(".parking-spot"));
+
+      function actualizarHora() {
+        $("hora").textContent = new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
+      }
+
+      function actualizarTiempo() {
+        var minutos = Math.floor((Date.now() - ultimaActualizacion) / 60000);
+        var texto = minutos < 1
+          ? "Actualizado hace un momento"
+          : "Actualizado hace " + minutos + (minutos === 1 ? " minuto" : " minutos");
+        $("updated").textContent = texto;
+      }
+
+      function render() {
+        var libres = ocupados.filter(function (ocupado) { return !ocupado; }).length;
+        var usados = TOTAL - libres;
+
+        $("libres").textContent = String(libres);
+        $("titulo").textContent = libres === 0
+          ? "Estacionamiento completo"
+          : libres === 1 ? "Queda 1 lugar disponible" : "Hay " + libres + " lugares disponibles";
+        $("sub").textContent = libres === 0
+          ? "No quedan espacios libres. Registra una salida o reinicia la demostración."
+          : libres === TOTAL
+            ? "Los tres espacios están libres. Selecciona uno en el modelo para probarlo."
+            : "El modelo muestra qué lugares están libres y cuáles tienen un vehículo.";
+        if (document.body.classList.contains("firebase-live")) {
+          $("sub").textContent = "Reservas sincronizadas para la fecha y hora elegidas en la pestaña Reservar.";
+        }
+        $("resumen").textContent = libres + " de " + TOTAL + " libres";
+        $("seg").setAttribute("aria-label", libres + " de " + TOTAL + " espacios disponibles");
+        $("estadoTxt").textContent = libres === 0 ? "Estacionamiento completo" : "Todo listo para estacionar";
+        $("estado").classList.toggle("is-full", libres === 0);
+        $("llega").disabled = libres === 0;
+        $("sale").disabled = libres === TOTAL;
+
+        $("seg").innerHTML = ocupados.map(function (ocupado) {
+          return '<i class="meter-segment ' + (ocupado ? "is-occupied" : "is-free") + '"></i>';
+        }).join("");
+
+        espacios.forEach(function (espacio, index) {
+          var ocupado = ocupados[index];
+          var nombre = "A" + (index + 1);
+          var remote = document.body.classList.contains("firebase-live");
+          var estado = ocupado ? (remote ? "reservado" : "ocupado") : "disponible";
+          espacio.classList.toggle("is-occupied", ocupado);
+          espacio.setAttribute("aria-pressed", ocupado ? "true" : "false");
+          espacio.setAttribute("aria-label", "Espacio " + nombre + ", " + estado + ". Selecciona para cambiar estado");
+          espacio.querySelector("[data-status]").textContent = ocupado ? (remote ? "RESERVADO" : "OCUPADO") : "DISPONIBLE";
+        });
+
+        ultimaActualizacion = Date.now();
+        actualizarTiempo();
+      }
+
+      window.updateParkingFromFirestore = function (states) {
+        ocupados = states.slice(0, TOTAL);
+        document.body.classList.add("firebase-live");
+        render();
+      };
+      window.restoreParkingDemo = function () {
+        document.body.classList.remove("firebase-live");
+        ocupados = [false, false, false];
+        render();
+      };
+
+      function alternarEspacio(indice) {
+        ocupados[indice] = !ocupados[indice];
+        render();
+      }
+
+      function cambiarEstado(marcarOcupado) {
+        var candidatos = [];
+        ocupados.forEach(function (ocupado, index) {
+          if (ocupado !== marcarOcupado) candidatos.push(index);
+        });
+        if (!candidatos.length) return;
+        var elegido = candidatos[Math.floor(Math.random() * candidatos.length)];
+        ocupados[elegido] = marcarOcupado;
+        render();
+      }
+
+      espacios.forEach(function (espacio, index) {
+        espacio.addEventListener("click", function () { alternarEspacio(index); });
+        espacio.addEventListener("keydown", function (event) {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            alternarEspacio(index);
+          }
+        });
+      });
+      $("llega").addEventListener("click", function () { cambiarEstado(true); });
+      $("sale").addEventListener("click", function () { cambiarEstado(false); });
+      $("reset").addEventListener("click", function () {
+        ocupados = [false, false, false];
+        render();
+      });
+
+      actualizarHora();
+      render();
+      window.setInterval(actualizarHora, 15000);
+      window.setInterval(actualizarTiempo, 15000);
+    }());
+  </script>
+  <script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore-compat.js"></script>
+  <script>
+    (function () {
+      "use strict";
+      var firebaseConfig = {
+        apiKey: "AIzaSyCaeCq4gNSRt-2qstaoOAnp7MwRNCjLoXE",
+        authDomain: "parknet-16713.firebaseapp.com",
+        projectId: "parknet-16713",
+        storageBucket: "parknet-16713.firebasestorage.app",
+        messagingSenderId: "1009696387704",
+        appId: "1:1009696387704:web:2849936a2e997ef03cf38d",
+        measurementId: "G-FL12CWCZF4"
+      };
+      var sdkLoaded = typeof firebase !== "undefined" && typeof firebase.initializeApp === "function";
+      var configured = sdkLoaded &&
+        firebaseConfig.apiKey &&
+        firebaseConfig.apiKey.indexOf("TU_") !== 0 &&
+        firebaseConfig.authDomain === "parknet-16713.firebaseapp.com" &&
+        firebaseConfig.projectId === "parknet-16713" &&
+        firebaseConfig.appId &&
+        firebaseConfig.appId.indexOf("TU_") !== 0;
+      var auth = null;
+      var db = null;
+      var user = null;
+      var spaces = ["A1", "A2", "A3"];
+      var selectedSpace = "A1";
+      var occupied = [false, false, false];
+      var listeners = [];
+      var bookingsListener = null;
+      var $ = function (id) { return document.getElementById(id); };
+
+      function pad(number) { return String(number).padStart(2, "0"); }
+      function localDate(date) {
+        return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate());
+      }
+      function hourValue() { return $("bookingTime").value.slice(0, 2); }
+      function slotKey(spaceId, date, hour) { return spaceId + "_" + date + "_" + hour; }
+      function validSlot() {
+        var date = $("bookingDate").value;
+        var time = $("bookingTime").value;
+        if (!date || !time || time.slice(3) !== "00" || date < localDate(new Date())) return false;
+        return new Date(date + "T" + time + ":00").getTime() > Date.now();
+      }
+      function setMessage(message, kind) {
+        var element = $("bookingStatus");
+        element.textContent = message || "";
+        element.classList.toggle("is-error", kind === "error");
+        element.classList.toggle("is-success", kind === "success");
+      }
+      function initializeDateTime() {
+        var now = new Date();
+        $("bookingDate").min = localDate(now);
+        now.setMinutes(0, 0, 0);
+        now.setHours(now.getHours() + 1);
+        $("bookingDate").value = localDate(now);
+        $("bookingTime").value = pad(now.getHours()) + ":00";
+      }
+      function stopAvailabilityListeners() {
+        listeners.forEach(function (unsubscribe) { unsubscribe(); });
+        listeners = [];
+      }
+      function updateSelection() {
+        document.querySelectorAll(".space-choice").forEach(function (button) {
+          button.setAttribute("aria-pressed", button.dataset.space === selectedSpace ? "true" : "false");
+        });
+        document.querySelectorAll(".parking-spot").forEach(function (spot, index) {
+          spot.classList.toggle("is-selected", spaces[index] === selectedSpace);
+        });
+      }
+      function renderAvailability(loading, error) {
+        var list = $("availabilityList");
+        list.replaceChildren();
+        if (!configured) {
+          addAvailabilityMessage("Conecta la configuración web de Firebase para activar Firestore.");
+          return;
+        }
+        if (!user) {
+          addAvailabilityMessage("Inicia sesión para consultar los espacios.");
+          return;
+        }
+        if (error) {
+          addAvailabilityMessage("No se pudo leer Firestore. Revisa las reglas publicadas.");
+          return;
+        }
+        if (loading || !validSlot()) {
+          addAvailabilityMessage(loading ? "Consultando disponibilidad…" : "Elige una fecha futura y una hora en punto.");
+          return;
+        }
+        spaces.forEach(function (spaceId, index) {
+          var row = document.createElement("div");
+          row.className = "availability-item" + (occupied[index] ? " is-taken" : "");
+          var name = document.createElement("strong");
+          name.textContent = "Espacio " + spaceId;
+          var status = document.createElement("span");
+          status.textContent = occupied[index] ? "Reservado" : "Disponible";
+          row.append(name, status);
+          list.appendChild(row);
+        });
+      }
+      function addAvailabilityMessage(message) {
+        var note = document.createElement("p");
+        note.className = "empty-reservations";
+        note.textContent = message;
+        $("availabilityList").appendChild(note);
+      }
+      function renderChoices(loading, error) {
+        var picker = $("spaceChoices");
+        picker.replaceChildren();
+        spaces.forEach(function (spaceId, index) {
+          var taken = occupied[index];
+          var button = document.createElement("button");
+          button.type = "button";
+          button.className = "space-choice" + (taken ? " is-taken" : "");
+          button.dataset.space = spaceId;
+          button.setAttribute("aria-pressed", selectedSpace === spaceId ? "true" : "false");
+          button.disabled = !configured || !user || loading || error || !validSlot() || taken;
+          var label = document.createElement("strong");
+          label.textContent = "Espacio " + spaceId;
+          var status = document.createElement("span");
+          status.textContent = !configured ? "Firebase pendiente" : !user ? "Inicia sesión" :
+            error ? "Error de conexión" : loading ? "Consultando…" : taken ? "Reservado" : "Disponible";
+          button.append(label, status);
+          button.addEventListener("click", function () {
+            selectedSpace = spaceId;
+            updateSelection();
+            updateReserveButton(loading, error);
+          });
+          picker.appendChild(button);
+        });
+        updateSelection();
+      }
+      function updateReserveButton(loading, error) {
+        var index = spaces.indexOf(selectedSpace);
+        $("reserveButton").disabled = !configured || !user || loading || error ||
+          !validSlot() || occupied[index];
+      }
+      function refreshAvailability() {
+        stopAvailabilityListeners();
+        occupied = [false, false, false];
+        var loading = !!(configured && user && validSlot());
+        renderAvailability(loading, false);
+        renderChoices(loading, false);
+        updateReserveButton(loading, false);
+        if (window.restoreParkingDemo) window.restoreParkingDemo();
+        if (!loading || !db) return;
+        var loaded = [false, false, false];
+        listeners = spaces.map(function (spaceId, index) {
+          var key = slotKey(spaceId, $("bookingDate").value, hourValue());
+          return db.collection("slots").doc(key).onSnapshot(function (snapshot) {
+            occupied[index] = snapshot.exists;
+            loaded[index] = true;
+            var stillLoading = !loaded.every(function (value) { return value; });
+            renderAvailability(stillLoading, false);
+            renderChoices(stillLoading, false);
+            updateReserveButton(stillLoading, false);
+            if (!stillLoading && window.updateParkingFromFirestore) {
+              window.updateParkingFromFirestore(occupied);
+            }
+          }, function () {
+            renderAvailability(false, true);
+            renderChoices(false, true);
+            $("reserveButton").disabled = true;
+          });
+        });
+      }
+      function renderAuth(userValue) {
+        user = userValue;
+        $("authButton").hidden = !!user;
+        $("userBadge").hidden = !user;
+        $("logoutButton").hidden = !user;
+        $("userBadge").textContent = user ? (user.displayName || user.email || "Cuenta") : "";
+        $("loginPrompt").hidden = !!user;
+        $("bookingFields").disabled = !user || !db;
+        document.querySelector(".controls").hidden = !!(user && db);
+        $("estadoTxt").textContent = !configured
+          ? "Firebase pendiente de configuración"
+          : user ? "Reservas sincronizadas" : "Inicia sesión para ver las reservas";
+        document.querySelector(".service-meta").textContent = !configured
+          ? "Completa firebaseConfig y publica firestore.rules"
+          : "Authentication y Firestore";
+        document.querySelector(".footer span:last-child").textContent = user && db
+          ? "Reservas sincronizadas con Firestore"
+          : "La simulación local se reinicia al recargar";
+        if (user) {
+          if ($("authDialog").open) $("authDialog").close();
+          subscribeBookings();
+        } else {
+          if (bookingsListener) bookingsListener();
+          bookingsListener = null;
+          $("reservationList").innerHTML = '<p class="empty-reservations">Inicia sesión para ver tus reservas.</p>';
+        }
+        refreshAvailability();
+      }
+      function subscribeBookings() {
+        if (bookingsListener) bookingsListener();
+        if (!db || !user) return;
+        var ref = db.collection("users").doc(user.uid).collection("reservations").where("status", "==", "active");
+        bookingsListener = ref.onSnapshot(function (snapshot) {
+          var rows = snapshot.docs.map(function (item) {
+            var data = item.data();
+            data.id = item.id;
+            return data;
+          });
+          rows.sort(function (a, b) { return (a.date + a.hour).localeCompare(b.date + b.hour); });
+          var list = $("reservationList");
+          list.replaceChildren();
+          if (!rows.length) {
+            var empty = document.createElement("p");
+            empty.className = "empty-reservations";
+            empty.textContent = "Todavía no tienes reservas activas.";
+            list.appendChild(empty);
+            return;
+          }
+          rows.forEach(function (booking) {
+            var item = document.createElement("article");
+            item.className = "reservation-item";
+            var details = document.createElement("div");
+            details.className = "reservation-details";
+            var title = document.createElement("strong");
+            title.textContent = "Espacio " + booking.spaceId;
+            var time = document.createElement("span");
+            time.textContent = new Date(booking.date + "T00:00:00").toLocaleDateString("es-CL", {
+              weekday: "short", day: "numeric", month: "short", year: "numeric"
+            }) + " · " + booking.hour + ":00–" + pad(Number(booking.hour) + 1) + ":00";
+            details.append(title, time);
+            var cancel = document.createElement("button");
+            cancel.type = "button";
+            cancel.className = "cancel-button";
+            cancel.textContent = "Cancelar reserva";
+            cancel.addEventListener("click", function () { cancelBooking(booking); });
+            item.append(details, cancel);
+            list.appendChild(item);
+          });
+        }, function () {
+          $("reservationList").textContent = "No se pudieron cargar tus reservas. Revisa las reglas.";
+        });
+      }
+      async function createBooking(event) {
+        event.preventDefault();
+        if (!configured || !db) {
+          setMessage("Pega tu configuración Firebase y publica las reglas para activar las reservas.", "error");
+          return;
+        }
+        if (!user) { openAuth("login"); return; }
+        if (!validSlot()) { setMessage("Elige una fecha futura y una hora en punto.", "error"); return; }
+        var date = $("bookingDate").value;
+        var hour = hourValue();
+        var spaceId = selectedSpace;
+        var key = slotKey(spaceId, date, hour);
+        var slotRef = db.collection("slots").doc(key);
+        var bookings = db.collection("users").doc(user.uid).collection("reservations");
+        var bookingRef = bookings.doc();
+        $("reserveButton").disabled = true;
+        setMessage("Guardando la reserva…");
+        try {
+          await db.runTransaction(async function (transaction) {
+            var snapshot = await transaction.get(slotRef);
+            if (snapshot.exists) throw new Error("SLOT_TAKEN");
+            transaction.set(slotRef, {
+              spaceId: spaceId, date: date, hour: hour, bookingId: bookingRef.id
+            });
+            transaction.set(bookingRef, {
+              bookingId: bookingRef.id, slotKey: key, spaceId: spaceId,
+              date: date, hour: hour, userId: user.uid, status: "active",
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          });
+          setMessage("Reserva confirmada para " + spaceId + ".", "success");
+          refreshAvailability();
+        } catch (error) {
+          setMessage(error.message === "SLOT_TAKEN"
+            ? "Ese espacio acaba de ser reservado. Elige otro."
+            : "No se pudo guardar. Revisa la configuración y las reglas de Firestore.", "error");
+          refreshAvailability();
+        }
+      }
+      async function cancelBooking(booking) {
+        var bookingRef = db.collection("users").doc(user.uid).collection("reservations").doc(booking.id);
+        var slotRef = db.collection("slots").doc(booking.slotKey);
+        try {
+          await db.runTransaction(async function (transaction) {
+            var bookingSnapshot = await transaction.get(bookingRef);
+            var slotSnapshot = await transaction.get(slotRef);
+            if (!bookingSnapshot.exists || bookingSnapshot.data().status !== "active") {
+              throw new Error("Reserva inactiva");
+            }
+            if (slotSnapshot.exists && slotSnapshot.data().bookingId === booking.id) {
+              transaction.delete(slotRef);
+            }
+            transaction.update(bookingRef, {
+              status: "cancelled",
+              cancelledAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          });
+          setMessage("Reserva cancelada.", "success");
+          refreshAvailability();
+        } catch (error) {
+          setMessage("No se pudo cancelar la reserva. Vuelve a intentarlo.", "error");
+        }
+      }
+      function setAuthMode(mode) {
+        var registering = mode === "register";
+        $("nameField").hidden = !registering;
+        $("authName").required = registering;
+        $("authPassword").autocomplete = registering ? "new-password" : "current-password";
+        $("loginMode").setAttribute("aria-selected", registering ? "false" : "true");
+        $("registerMode").setAttribute("aria-selected", registering ? "true" : "false");
+        $("authSubmit").textContent = registering ? "Crear cuenta" : "Iniciar sesión";
+        $("authMessage").classList.remove("is-error");
+        $("authMessage").textContent = "";
+      }
+      function openAuth(mode) {
+        setAuthMode(mode || "login");
+        $("authConfigWarning").textContent = configured
+          ? "Inicia con Google o usa el correo y contraseña registrados en Firebase."
+          : sdkLoaded
+            ? "Completa firebaseConfig y publica firestore.rules."
+            : "No se pudo cargar Firebase. Abre la página desde un servidor web y comprueba Internet.";
+        $("authMessage").textContent = "";
+        if (!$("authDialog").open) $("authDialog").showModal();
+      }
+      function authError(error) {
+        var messages = {
+          "auth/email-already-in-use": "Ese correo ya está registrado.",
+          "auth/invalid-email": "Revisa el formato del correo.",
+          "auth/weak-password": "La contraseña debe tener al menos 6 caracteres.",
+          "auth/invalid-credential": "El correo o la contraseña no son correctos.",
+          "auth/operation-not-allowed": "Activa el proveedor de acceso correspondiente en Firebase Authentication.",
+          "auth/popup-closed-by-user": "Se cerró la ventana de Google antes de completar el acceso.",
+          "auth/popup-blocked": "El navegador bloqueó la ventana de Google. Permite las ventanas emergentes para este sitio.",
+          "auth/unauthorized-domain": "Agrega el dominio de esta página en Firebase Authentication > Dominios autorizados.",
+          "auth/cancelled-popup-request": "Ya hay una ventana de acceso abierta. Completa o cierra esa ventana e inténtalo de nuevo.",
+          "auth/account-exists-with-different-credential": "Ese correo ya tiene una cuenta con otro método. Inicia sesión con ese método primero."
+        };
+        return messages[error.code] || "No se pudo completar el acceso. Revisa Firebase.";
+      }
+      function switchTab(which) {
+        var reservations = which === "booking";
+        $("dashboardView").hidden = reservations;
+        $("bookingView").hidden = !reservations;
+        $("tabDashboard").setAttribute("aria-selected", reservations ? "false" : "true");
+        $("tabBooking").setAttribute("aria-selected", reservations ? "true" : "false");
+      }
+
+      $("tabDashboard").addEventListener("click", function () { switchTab("dashboard"); });
+      $("tabBooking").addEventListener("click", function () { switchTab("booking"); });
+      $("authButton").addEventListener("click", function () { openAuth("login"); });
+      $("bookingLoginButton").addEventListener("click", function () { openAuth("login"); });
+      $("closeAuth").addEventListener("click", function () { $("authDialog").close(); });
+      $("loginMode").addEventListener("click", function () { setAuthMode("login"); });
+      $("registerMode").addEventListener("click", function () { setAuthMode("register"); });
+      $("googleSignInButton").addEventListener("click", async function () {
+        var button = $("googleSignInButton");
+        if (!configured || !auth) {
+          $("authMessage").textContent = "Firebase no está disponible. Revisa la conexión y la configuración.";
+          $("authMessage").classList.add("is-error");
+          return;
+        }
+        button.disabled = true;
+        $("authSubmit").disabled = true;
+        $("authMessage").classList.remove("is-error");
+        $("authMessage").textContent = "Conectando con Google…";
+        try {
+          auth.languageCode = "es";
+          var provider = new firebase.auth.GoogleAuthProvider();
+          provider.setCustomParameters({ prompt: "select_account" });
+          await auth.signInWithPopup(provider);
+          $("authDialog").close();
+          $("authForm").reset();
+          $("authMessage").textContent = "";
+        } catch (error) {
+          $("authMessage").textContent = authError(error);
+          $("authMessage").classList.add("is-error");
+        } finally {
+          button.disabled = false;
+          $("authSubmit").disabled = false;
+        }
+      });
+      $("authDialog").addEventListener("click", function (event) {
+        if (event.target === $("authDialog")) $("authDialog").close();
+      });
+      $("authForm").addEventListener("submit", async function (event) {
+        event.preventDefault();
+        if (!configured || !auth) {
+          $("authMessage").textContent = "Completa firebaseConfig y publica las reglas antes de crear una cuenta.";
+          $("authMessage").classList.add("is-error");
+          return;
+        }
+        var submit = $("authSubmit");
+        var registering = !$("nameField").hidden;
+        submit.disabled = true;
+        try {
+          var email = $("authEmail").value.trim();
+          var password = $("authPassword").value;
+          if (!registering) {
+            await auth.signInWithEmailAndPassword(email, password);
+          } else {
+            var account = await auth.createUserWithEmailAndPassword(email, password);
+            await account.user.updateProfile({ displayName: $("authName").value.trim() });
+            await account.user.sendEmailVerification();
+          }
+          $("authDialog").close();
+          $("authForm").reset();
+          if (registering) {
+            var verificationMessage = "Te enviamos un correo de verificación a " + email + ".";
+            $("sub").textContent = verificationMessage;
+            setMessage(verificationMessage, "success");
+          }
+        } catch (error) {
+          $("authMessage").textContent = authError(error);
+          $("authMessage").classList.add("is-error");
+        } finally {
+          submit.disabled = false;
+        }
+      });
+      $("logoutButton").addEventListener("click", function () { if (auth) auth.signOut(); });
+      $("bookingForm").addEventListener("submit", createBooking);
+      $("bookingDate").addEventListener("change", refreshAvailability);
+      $("bookingTime").addEventListener("change", refreshAvailability);
+      document.addEventListener("click", function (event) {
+        var spot = event.target.closest && event.target.closest(".parking-spot");
+        if (!configured || !spot) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        var index = Number(spot.getAttribute("data-slot"));
+        if (!user) { openAuth("login"); return; }
+        selectedSpace = spaces[index];
+        updateSelection();
+        switchTab("booking");
+      }, true);
+      document.addEventListener("keydown", function (event) {
+        var spot = event.target.closest && event.target.closest(".parking-spot");
+        if (!configured || !spot || (event.key !== "Enter" && event.key !== " ")) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        var index = Number(spot.getAttribute("data-slot"));
+        if (!user) { openAuth("login"); return; }
+        selectedSpace = spaces[index];
+        updateSelection();
+        switchTab("booking");
+      }, true);
+
+      initializeDateTime();
+      renderChoices(false, false);
+      renderAvailability(false, false);
+      if (!configured) {
+        $("bookingConfigNote").textContent = "Firebase no pudo inicializarse. Revisa la conexión y firebaseConfig.";
+        $("authConfigWarning").textContent = "Firebase no pudo inicializarse con esta configuración.";
+        renderAuth(null);
+      } else {
+        try {
+          var app = firebase.apps.length ? firebase.app() : firebase.initializeApp(firebaseConfig);
+          auth = app.auth();
+          db = app.firestore();
+          auth.onAuthStateChanged(renderAuth);
+          $("bookingConfigNote").textContent = "Conectado a Firebase Authentication y Cloud Firestore.";
+        } catch (error) {
+          $("bookingConfigNote").textContent = "No se pudo iniciar Firebase. Revisa firebaseConfig.";
+          renderAuth(null);
+        }
+      }
+    }());
+  </script>
+</body>
+</html>

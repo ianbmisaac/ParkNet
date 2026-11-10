@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ParkNet — panel remoto (internet)</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, sans-serif; background:#0d1117; color:#e6edf3; }
+  main { max-width: 520px; margin: 0 auto; padding: 16px; }
+  header { padding: 14px 16px; }
+  h1 { font-size: 1.25rem; margin: 0; }
+  .sub { color: #8b949e; font-size: .85rem; }
+  .card { background:#161b22; border:1px solid #30363d; border-radius:12px; padding:14px; margin:10px 0; }
+  .row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .big { font-size: 2rem; font-weight: 700; }
+  .ok { color:#3fb950; } .warn { color:#d29922; } .bad { color:#f85149; }
+  button { font: inherit; border:1px solid #30363d; background:#21262d; color:#e6edf3;
+           border-radius:8px; padding:10px 14px; cursor:pointer; }
+  button:active { transform: scale(.97); }
+  .abrir { border-color:#3fb950; color:#3fb950; }
+  .cerrar { border-color:#f85149; color:#f85149; }
+  .chip { display:inline-block; padding:4px 10px; border-radius:999px;
+          border:1px solid #30363d; margin-right:6px; font-size:.9rem; }
+  .log { font-family: ui-monospace, monospace; font-size:.8rem; color:#8b949e;
+         max-height:130px; overflow:auto; white-space:pre-wrap; }
+  small { color:#8b949e; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5/dist/mqtt.min.js"></script>
+</head>
+<body>
+<header>
+  <h1>🅿️ ParkNet — panel remoto</h1>
+  <div class="sub">Equipo Fixmol · Feria de Informática 2026</div>
+</header>
+<main>
+  <div class="card">
+    <div class="row"><span>Conexión</span><span id="st" class="warn">conectando…</span></div>
+    <small>broker: <span id="brokerTxt">fallando en lista</span> · topics <code>iot/fixmol/#</code></small>
+  </div>
+
+  <div class="card">
+    <div class="row"><span>Plazas libres</span><span class="big" id="libres">–</span></div>
+    <div style="margin-top:8px">
+      <span class="chip" id="p1">Plaza 1: –</span>
+      <span class="chip" id="p2">Plaza 2: –</span>
+      <span class="chip" id="barr">Barrera: –</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <button class="abrir" onclick="cmd('ABRIR')">▲ ABRIR barrera</button>
+      <button class="cerrar" onclick="cmd('CERRAR')">▼ CERRAR barrera</button>
+    </div>
+    <small>Obedece el hardware real (servo). Confirmación visual: la pantalla LCD de la placa.</small>
+  </div>
+
+  <div class="card">
+    <div class="row"><span>Última señal del Arduino</span><span id="ts" class="sub">nunca</span></div>
+    <div class="log" id="log"></div>
+    <small>El Arduino publica su estado al cambiar algo y como latido cada 30 s.</small>
+  </div>
+
+  <div class="card">
+    <div class="sub">Proyecto del estacionamiento:_sensor IR en plaza 1, plaza 2 virtual (web),
+    barrera con servo, LCD 1602 y LEDs. Estado y comandos por MQTT propio del grupo
+    (topics únicos <code>iot/fixmol/…</code>) para que sirvan igual con Firebase.</div>
+  </div>
+</main>
+
+<script>
+const BROKERS = [
+  "wss://test.mosquitto.org:8081",
+  "wss://broker.hivemq.com:8884/mqtt",
+  "wss://broker.emqx.io:8084/mqtt"
+];
+const TOP_E = "iot/fixmol/estado", TOP_P = "iot/fixmol/plazas", TOP_S = "iot/fixmol/servo";
+let cli = null, idx = 0, timer = null;
+
+const $ = id => document.getElementById(id);
+
+function log(m) { $("log").textContent = (new Date().toLocaleTimeString() + "  " + m + "\n") + $("log").textContent.split("\n").slice(0,12).join("\n"); }
+
+function conectar() {
+  if (idx >= BROKERS.length) { idx = 0; $("st").textContent = "sin broker (reintento)"; }
+  const url = BROKERS[idx];
+  $("brokerTxt").textContent = new URL(url).host;
+  try { if (cli) cli.end(true); } catch(e){}
+  cli = mqtt.connect(url, { clientId: "panelweb-" + Math.random().toString(16).slice(2,8), connectTimeout: 8000, reconnectPeriod: 0 });
+
+  cli.on("connect", () => {
+    clearInterval(timer);
+    $("st").textContent = "conectado ✅"; $("st").className = "ok";
+    log("conectado a " + new URL(url).host);
+    cli.subscribe([TOP_E, TOP_P], e => { if (!e) log("suscripto a estado y plazas"); });
+  });
+  cli.on("close", () => {
+    $("st").textContent = "reconectando…"; $("st").className = "warn";
+    clearInterval(timer);
+    timer = setTimeout(() => { idx++; conectar(); }, 4000);
+  });
+  cli.on("error", () => { try { cli.end(true); } catch(e){} });
+  cli.on("message", (t, msg) => {
+    const s = msg.toString();
+    $("ts").textContent = new Date().toLocaleTimeString();
+    if (t === TOP_P) { $("libres").textContent = s; }
+    if (t === TOP_E) {
+      try {
+        const d = JSON.parse(s);
+        $("libres").textContent = d.libres + " / " + d.total;
+        pinta("p1", d.ocupadas[0] === 1); pinta("p2", (d.ocupadas[1]||0) === 1);
+        barr = d.barrera; $("barr").textContent = "Barrera: " + d.barrera;
+        log("estado: " + s);
+      } catch(e) { log("(estado ilegible) " + s); }
+    }
+  });
+}
+let barr = "–";
+function pinta(id, ocupada) {
+  $(id).textContent = (id === "p1" ? "Plaza 1: " : "Plaza 2: ") + (ocupada ? "OCUPADA" : "LIBRE");
+}
+
+function cmd(m) {
+  if (!cli || !cli.connected) { log("sin conexión con el broker, no pude enviar"); return; }
+  cli.publish(TOP_S, m);
+  log("enviado: " + m);
+}
+
+conectar();
+</script>
+</body>
+</html>

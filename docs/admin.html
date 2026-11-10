@@ -39,6 +39,7 @@
 <script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mqtt@5/dist/mqtt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 </head>
 <body>
 <header>
@@ -88,6 +89,29 @@
 
   <!-- ===== TAB reservas ===== -->
   <section id="secRes">
+    <div class="card">
+      <div class="row"><strong>📷 Entrada por QR (cámara del PC)</strong>
+        <span id="qrEstado" class="muted">cámara apagada</span>
+      </div>
+      <div style="text-align:center;margin:8px 0">
+        <video id="videoQR" playsinline muted
+          style="width:100%;max-width:340px;border-radius:12px;border:1px solid #30363d;display:none"></video>
+      </div>
+      <div class="row">
+        <button class="verde" id="bCamara">▶ Encender cámara</button>
+        <button id="bCamaraStop">■ detener</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <input id="pinManual" placeholder="PIN manual (6 dígitos)" style="flex:1;min-width:150px"
+          inputmode="numeric" maxlength="6">
+        <button id="bValidarPin">Validar</button>
+      </div>
+      <div id="qrResultado" class="nota" style="margin-top:10px"></div>
+      <div id="qrAccion" class="row" style="margin-top:6px"><span></span></div>
+      <div class="nota" style="margin-top:8px">El usuario muestra el QR de su reserva en
+      <b>ianbmisaac.github.io/ParkNet</b>; aquí se lee con la cámara, se valida contra
+      Firestore (activo, hoy, hora correcta) y recién entonces la oficina permite abrir la barrera.</div>
+    </div>
     <div class="card">
       <div class="row">
         <strong id="lblDia">Disponibilidad por día:</strong>
@@ -226,7 +250,98 @@ function tab(res) {
   $("tabRes").className = res ? "on" : ""; $("tabHW").className = res ? "" : "on";
 }
 
-/* ================= TAB reservas ================= */
+/* ================= Escaner de QR (camara del PC) ================= */
+let stream = null, scanning = false, scanCanvas = null;
+
+$("bCamara").onclick = async () => {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    const video = $("videoQR");
+    video.srcObject = stream;
+    video.style.display = ""; video.play();
+    $("qrEstado").textContent = "cámara lista — enseña el QR"; $("qrEstado").className = "ok";
+    $("bCamara").disabled = true;
+    if (!scanCanvas) scanCanvas = document.createElement("canvas");
+    scanning = true;
+    requestAnimationFrame(escanearFrame);
+  } catch (e) { $("qrEstado").textContent = "cámara denegada/desconectada"; $("qrEstado").className = "bad"; }
+};
+$("bCamaraStop").onclick = () => apagarCamara();
+function apagarCamara() {
+  scanning = false;
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  $("videoQR").style.display = "none";
+  $("qrEstado").textContent = "cámara apagada"; $("qrEstado").className = "muted";
+  $("bCamara").disabled = false;
+}
+function escanearFrame() {
+  if (!scanning) return;
+  const video = $("videoQR");
+  if (video.readyState === video.HAVE_ENOUGH_DATA) {
+    scanCanvas.width = video.videoWidth; scanCanvas.height = video.videoHeight;
+    const cx = scanCanvas.getContext("2d", { willReadFrequently: true });
+    cx.drawImage(video, 0, 0);
+    const img = cx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+    const code = (typeof jsQR === "function") && jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
+    if (code && code.data) validarTokenQr(code.data);
+  }
+  requestAnimationFrame(escanearFrame);
+}
+
+// Valida un PIN contra Firestore; admite el formato del QR (PN|slot|pin)
+// o un PIN manual (busca cualquier reserva activa con ese pin).
+async function validarTokenQr(payload) {
+  const partes = String(payload).split("|");
+  let pin = partes.length >= 3 ? partes[2] : payload;
+  pin = String(pin).trim();
+  if (!/^[0-9]{6}$/.test(pin)) { muestraQr("El QR/code no parece de ParkNet.", false); return; }
+  const slotEsperado = partes.length >= 3 ? partes[1] : null;
+  muestraQr("validando PIN " + pin + " …", null, true);
+  if (scanning) apagarCamara();                    // pausa la camara al leer algo
+  try {
+    const snap = await db.collectionGroup("reservations").where("pin", "==", pin).limit(5).get();
+    const filas = snap.docs.map(d => ({ ref: d.ref, data: d.data() }));
+    if (!filas.length) { muestraQr("PIN no existe (ninguna reserva lo usa).", false); return; }
+    const r = filas.find(x => !slotEsperado || x.data.slotKey === slotEsperado) || filas[0];
+    const d = r.data;
+    if (d.status !== "active") { muestraQr("La reserva no está activa (cancelada).", false); return; }
+    if (slotEsperado && d.slotKey !== slotEsperado) { muestraQr("El QR no coincide con la reserva.", false); return; }
+    const hoy = fechaStr(new Date());
+    const horaAhora = new Date().getHours();
+    if (d.date !== hoy) { muestraQr("La reserva es para " + d.date + " (hoy es " + hoy + ").", false); return; }
+    const h = Number(d.hour);
+    if (horaAhora !== h && horaAhora !== h + 1) {
+      muestraQr("Aún no es tu hora: reserva " + h + ":00–" + (h+1) + ":00 (ahora son las " + horaAhora + ":00).", false);
+      return;
+    }
+    // VALIDA ✓ → ofrece abrir
+    let resp;
+    try { resp = await db.collection("users").doc(d.userId).collection("profile").doc("main").get(); } catch (e) { resp = null; }
+    muestraQr("✅ Reserva VÁLIDA — " + d.spaceId + " · " + d.hour + ":00–" + (Number(d.hour)+1) +
+      ":00 · usuario " + d.userId.slice(0,6) + "…", true);
+    // marca de ingreso en la propia reserva (quien y cuando; audit trail)
+    r.ref.update({ checkedIn: firebase.firestore.FieldValue.serverTimestamp(),
+                   checkedInBy: user ? user.uid : "admin" }).catch(() => {});
+    const acc = $("qrAccion"); acc.innerHTML = "";
+    const b = document.createElement("button");
+    b.className = "verde"; b.textContent = "▲ Abrir barrera (ingreso confirmado)";
+    b.onclick = () => { enviar({ cmd: "barrera", estado: "ABIERTA" });
+                        muestraQr("Barrera abierta por QR (cierra sola). Bienvenido."); };
+    acc.appendChild(b);
+  } catch (e) { muestraQr("No se pudo consultar Firestore: " + e.code, false); }
+}
+function muestraQr(txt, bien, trabajando) {
+  const el = $("qrResultado");
+  el.textContent = txt;
+  el.className = notaClase(bien, trabajando);
+  if (!bien && !trabajando) { $("qrAccion").innerHTML = "<span></span>"; }
+}
+function notaClase(bien, trabajando) {
+  return bien === null ? "nota warn" : bien ? "ok" : "bad";
+}
+$("bValidarPin").onclick = () => validarTokenQr($("pinManual").value);
+
+/* ================= TAB reservas inicio ================= */
 $("btnHoy").onclick    = () => pintaDia(fechaStr(new Date()));
 $("btnManana").onclick = () => pintaDia(fechaStr(diaMas(1)));
 $("dia").onchange = () => { cargarSlots(); };

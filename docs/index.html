@@ -295,6 +295,14 @@
         </label>
         <span class="user-badge" id="userBadge" hidden></span>
         <button class="logout-button" id="logoutButton" type="button" hidden>Cerrar sesión</button>
+        <div id="verificaBanner" hidden style="display:none;align-items:center;gap:8px;
+          margin:6px 0 0;padding:7px 12px;border:1px solid #d9a13d;border-radius:12px;
+          background:rgba(217,161,61,.12);color:#f0c67e;font-size:.75rem">
+          Verifica tu correo (revisa tu bandeja de entrada) para poder reservar.
+          <button type="button" id="btnReEnviar" style="padding:5px 10px;border-radius:8px;
+            border:1px solid #d9a13d;background:transparent;color:#f0c67e;cursor:pointer;
+            font-size:.72rem">Reenviar</button>
+        </div>
         <div class="live-pill"><span class="live-dot" aria-hidden="true"></span>En tiempo real</div>
         <time class="clock" id="hora" aria-label="Hora actual"></time>
       </div>
@@ -665,6 +673,7 @@
   <script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script>
     (function () {
       "use strict";
@@ -701,6 +710,13 @@
       }
       function hourValue() { return $("bookingTime").value.slice(0, 2); }
       function slotKey(spaceId, date, hour) { return spaceId + "_" + date + "_" + hour; }
+      // PIN de entrada: 6 digitos que viajan dentro del QR de la reserva
+      function newPin() {
+        var p = "";
+        for (var i = 0; i < 6; i++) p += Math.floor(Math.random() * 10);
+        return p;
+      }
+      function qrPayload(slotKey_, pin) { return "PN|" + slotKey_ + "|" + pin; }
       function validSlot() {
         var date = $("bookingDate").value;
         var time = $("bookingTime").value;
@@ -829,6 +845,34 @@
           });
         });
       }
+      // Dialog del QR: modal con el codigo de la reserva (PN|slot|pin)
+      var qrDialog = null;
+      function mostrarQr(booking) {
+        if (typeof QRCode === "undefined") return;
+        if (!qrDialog) {
+          qrDialog = document.createElement("dialog");
+          qrDialog.style.cssText = "border:0;border-radius:18px;padding:0;" +
+            "background:rgba(17,29,36,.98);color:#dce9e4;text-align:center";
+          qrDialog.innerHTML =
+            '<div style="padding:22px 26px">' +
+            '<h3 style="margin:0 0 6px;font-size:1.05rem">Tu código de ingreso</h3>' +
+            '<p id="qrSub" style="margin:0 0 14px;font-size:.8rem;color:#8fb8a8"></p>' +
+            '<canvas id="qrCanvas" style="border-radius:12px;background:#fff"></canvas>' +
+            '<p style="margin:12px 0 0;font-size:.75rem;color:#8fb8a8">Muestralo al llegar: la barrera se abre en tu horario.</p>' +
+            '<button id="qrCerrar" type="button" style="margin-top:14px;padding:8px 18px;border-radius:10px;' +
+            'border:1px solid #2c5b4c;background:#12342a;color:#dce9e4;cursor:pointer">Cerrar</button>' +
+            '</div>';
+          document.body.appendChild(qrDialog);
+          qrDialog.querySelector("#qrCerrar").addEventListener("click", function () { qrDialog.close(); });
+        }
+        QRCode.toCanvas(qrDialog.querySelector("#qrCanvas"),
+          qrPayload(booking.slotKey, booking.pin),
+          { width: 200, margin: 2, color: { dark: "#09251b", light: "#ffffff" } });
+        qrDialog.querySelector("#qrSub").textContent =
+          "Espacio " + booking.spaceId + " · " + booking.date + " · " + booking.hour + ":00";
+        if (!qrDialog.open) qrDialog.showModal();
+      }
+
       /* ===== foto de perfil =====
          - cuenta Google: usa la foto de la cuenta (photoURL)
          - cuenta de correo: sube su foto (se recorta a 128x128 y se guarda
@@ -896,6 +940,15 @@
         $("userBadge").hidden = !user;
         $("logoutButton").hidden = !user;
         $("userBadge").textContent = user ? (user.displayName || user.email || "Cuenta") : "";
+        // cuenta de correo sin verificar: aviso persistente (las reglas
+        // tambien bloquean reservar sin verificar; Google ya viene verificado)
+        var banner = $("verificaBanner");
+        if (user && !user.emailVerified) {
+          banner.style.display = "flex";
+          $("btnReEnviar").textContent = "Reenviar";
+        } else {
+          banner.style.display = "none";
+        }
         pintaFoto(userValue);
         $("loginPrompt").hidden = !!user;
         $("bookingFields").disabled = !user || !db;
@@ -956,7 +1009,17 @@
             cancel.className = "cancel-button";
             cancel.textContent = "Cancelar reserva";
             cancel.addEventListener("click", function () { cancelBooking(booking); });
-            item.append(details, cancel);
+            var qrBtn = document.createElement("button");
+            qrBtn.type = "button";
+            qrBtn.className = "cancel-button";
+            if (booking.pin) {
+              qrBtn.textContent = "Mostrar QR";
+              qrBtn.addEventListener("click", function () { mostrarQr(booking); });
+            } else {
+              qrBtn.textContent = "QR (reserva antigua)";
+              qrBtn.disabled = true;
+            }
+            item.append(details, qrBtn, cancel);
             list.appendChild(item);
           });
         }, function () {
@@ -990,6 +1053,7 @@
             transaction.set(bookingRef, {
               bookingId: bookingRef.id, slotKey: key, spaceId: spaceId,
               date: date, hour: hour, userId: user.uid, status: "active",
+              pin: newPin(),
               createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
           });
@@ -1142,6 +1206,15 @@
         }
       });
       $("logoutButton").addEventListener("click", function () { if (auth) auth.signOut(); });
+      $("btnReEnviar").addEventListener("click", function () {
+        if (user) {
+          user.sendEmailVerification().then(function () {
+            $("btnReEnviar").textContent = "Enviado ✓";
+            setTimeout(function () { $("btnReEnviar").textContent = "Reenviar"; }, 2500);
+          }).catch(function () { $("btnReEnviar").textContent = "Ya enviado";
+            setTimeout(function () { $("btnReEnviar").textContent = "Reenviar"; }, 2500); });
+        }
+      });
       $("bookingForm").addEventListener("submit", createBooking);
       $("bookingDate").addEventListener("change", refreshAvailability);
       $("bookingTime").addEventListener("change", refreshAvailability);

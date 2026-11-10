@@ -71,19 +71,25 @@ service cloud.firestore {
     }
 
     match /users/{userId}/reservations/{bookingId} {
+      // Las reservas exigen correo verificado (Google ya lo trae); asi el
+      // registro o verification bloquea cuentas basura.
+      // NUEVO: campo pin (6 digitos) dentro del QR de la reserva, que la
+      // pagina admin valida con la camara antes de abrir la barrera.
       allow get, list: if (signedIn() && request.auth.uid == userId) || isAdmin();
 
       // The matching slot lock must be created in the same Firestore transaction.
       allow create: if signedIn()
+        && request.auth.token.email_verified == true
         && request.auth.uid == userId
         && request.resource.data.keys().hasOnly([
           'bookingId', 'slotKey', 'spaceId', 'date', 'hour',
-          'userId', 'status', 'createdAt'
+          'userId', 'status', 'createdAt', 'pin'
         ])
         && request.resource.data.keys().hasAll([
           'bookingId', 'slotKey', 'spaceId', 'date', 'hour',
-          'userId', 'status', 'createdAt'
+          'userId', 'status', 'createdAt', 'pin'
         ])
+        && request.resource.data.pin is string
         && request.resource.data.bookingId == bookingId
         && request.resource.data.userId == userId
         && request.resource.data.status == 'active'
@@ -107,7 +113,12 @@ service cloud.firestore {
         && resource.data.status == 'active'
         && request.resource.data.status == 'cancelled'
         && request.resource.data.cancelledAt == request.time
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt']));
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt']))
+        // marca de ingreso por QR: solo esos 2 campos, fecha del servidor
+        || (isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['checkedIn', 'checkedInBy'])
+        && request.resource.data.checkedIn == request.time
+        && request.resource.data.checkedInBy == request.auth.uid);
       // NOTA admin: la actualizacion del admin no exige !existsAfter del
       // slot, porque el admin cancela primero la reserva y libera el
       // bloqueo en la misma transaccion del cliente (ver admin.html).

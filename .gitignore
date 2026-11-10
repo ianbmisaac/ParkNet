@@ -1,0 +1,18 @@
+# binarios y builds
+firmware/parknet/build/
+firmware/build/
+*.bin
+*.hex
+*.elf
+*.o
+
+# temporales del sistema
+*.tmp
+Thumbs.db
+desktop.ini
+
+# backup del diagrama
+simulacion/diagram.json.bak
+
+# secretos del equipo (si se suben credenciales reales, mover aqui)
+# firebase/keys.json

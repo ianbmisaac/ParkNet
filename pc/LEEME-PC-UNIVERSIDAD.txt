@@ -1,0 +1,49 @@
+=====================================================================
+  ParkNet - como se usa en ESTE PC (el de la universidad)
+  Equipo Fixmol
+=====================================================================
+
+  1) Conecta el Arduino con el cable USB (de datos).
+
+  2) Doble clic en   start-parknet.cmd
+     Se abre el panel solo en el navegador.
+     Si Windows lo bloquea: clic derecho > "Ejecutar con PowerShell".
+
+  3) En el panel, arriba a la derecha:
+        "Conectar por servidor local"  con  "Arduino real (COM3)"
+     El puerto COM se detecta SOLO: si tu Arduino sale en COM5 o COM7,
+     el script lo encuentra igualmente (tambien puedes forzarlo:
+     .\serve.ps1 -ComPort COM5 ).
+
+  4) Para que el movil u otro PC de la red entren al panel:
+     - doble clic en   abrir-en-red.bat   (acepta el UAC)
+     - luego en el movil:  http://IP-DE-ESTE-PC:8765/dashboard.html
+       (la IP de este PC sale en la ventana del servidor)
+
+=====================================================================
+  Y si el Arduino va SIN PC (movil + cargador)
+=====================================================================
+  - Conecta el Arduino a un cargador de movil (5 V) por su USB-C.
+  - El Arduino levanta su propia red "ParkNet" (clave: parknet2026).
+  - Conecta el movil a esa red y abre:   http://192.168.4.1
+  - Sale el MISMO panel. Sin internet y sin este PC.
+  - Si el hotspot "HONOR ola" esta encendido, el Arduino intenta
+    unirse a el solo y avisa por el monitor con su IP.
+
+=====================================================================
+  Ficheros
+=====================================================================
+  start-parknet.cmd     arranca el servidor y abre el panel
+  serve.ps1             servidor local (puente COM3 <-> navegador)
+  dashboard.html        el panel (responsive: PC, tablet y movil)
+  abrir-en-red.bat      abre el puerto 8765 a la red (admin)
+  build.ps1             compila y sube el sketch (-Target r4|avr|both)
+  gen-panel.ps1         mete el dashboard.html dentro del firmware
+  gen-diagram.ps1       genera el diagrama de Wokwi
+  check-cables.ps1      comprueba que no se cruzan los cables
+  draw-diagram.ps1      dibuja el esquema en PNG
+  diagram.json          el diagrama de Wokwi
+  wokwi.toml            configuracion de Wokwi
+  parknet\              el firmware (parknet.ino, parknet_wifi.h, ...)
+  README.md             documentacion completa del proyecto
+=====================================================================

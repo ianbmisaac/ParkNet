@@ -1,0 +1,9 @@
+[wokwi]
+version = 1
+firmware = 'parknet/build/parknet.ino.hex'
+elf = 'parknet/build/parknet.ino.elf'
+
+# Puente serie del simulador -> TCP (RFC2217).
+# Permite ver el estado del Wokwi desde un cliente serie por red.
+# Con la extension "Serial Monitor" de VS Code: modo TCP, host localhost, puerto 4000.
+rfc2217ServerPort = 4000

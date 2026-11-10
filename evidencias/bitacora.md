@@ -67,6 +67,16 @@ Piezas del grupo correctamente entregadas:
 Pendientes restantes:
 
 - [ ] Montaje con fuente externa (pila 9V + módulo buck a 5V) — pieza en camino
+- [x] Acceso remoto por internet: broker público `test.mosquitto.org`, topics `iot/fixmol/#`
+- [x] Página independiente en GitHub Pages: https://ianbmisaac.github.io/ParkNet/
+- [x] Evidencia de friend probando el hardware desde otra parte del mundo (10-nov-2026)
+- [x] Red base en casa: hotspot del PC en 2.4 GHz (auto-arranque al iniciar sesión)
+- [x] Hallazgo del celular del equipo: hotspot `HONOR ola` emite SOLO 5 GHz →
+  invisible para la placa (radar de la placa no lo lista en escaneo, mientras
+  el PC sí se une, con Clave WPA2 y gateway 10.89.210.x). Conclusión: no se
+  puede por ahí — limitación de banda del punto de acceso del teléfono
+  (rénar la banda de 2.4 GHz del hotspot del celu del otro equipo
+  funcionaría igual, porque el firmware ya guarda ese nombre/clave)
 - [ ] Firebase (amigo 1) — consumir `iot/grupo1/estado`
 - [ ] Página cliente (amigo 2)
 - [ ] Capturas de: broker `-v` con mensajes, panel en el teléfono, pantalla LCD

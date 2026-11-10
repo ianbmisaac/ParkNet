@@ -254,12 +254,16 @@ const db = firebase.firestore();
 const $ = id => document.getElementById(id);
 
 let user = null, esAdmin = false, slotsViews = [], resView = null;
+// con que doc demonos el rol y cuando pasamos la ultima verificacion en vivo
+let adminDocTipo = "uid";        // "uid" | "correo"
+let adminVerificadoEn = 0;       // Date.now() del ultimo pase
 
 /* ================= login / rol ================= */
 auth.onAuthStateChanged(u => {
   user = u;
   if (!u) {
     $("cardLogin").style.display = ""; $("cardRol").style.display = "none";
+    adminVerificadoEn = 0; adminDocTipo = "uid";      // nada de caches: otra sesion
     const t = $("tabsUI"); if (t) t.style.display = "none"; salirVistas();
     return;
   }
@@ -268,14 +272,17 @@ auth.onAuthStateChanged(u => {
   $("uidTxt").textContent = u.uid;
   // rol: admins/<uid> con admin==true, o admins/<correo> (promovido desde el panel)
   (async () => {
-    let es = false;
+    let es = false, esPorUid = false;
     const du = await db.collection("admins").doc(u.uid).get();
-    es = !!(du.exists && du.data().admin === true);
+    esPorUid = !!(du.exists && du.data().admin === true);
+    es = esPorUid;
     if (!es && u.email) {
       const de = await db.collection("admins").doc(u.email.toLowerCase()).get();
       es = !!(de.exists && de.data().admin === true);
     }
+    adminDocTipo = esPorUid ? "uid" : "correo";
     esAdmin = es;
+    if (es) adminVerificadoEn = Date.now();   // este golpe ya vale como pase
     if (esAdmin) {
       // si una pasada anterior borro la UI (doble verificacion), rearmarla
       // desde cero es mas seguro que reconstruir nodos:
@@ -707,14 +714,20 @@ function pinta(id, ocupada, nombre) {
 async function soyAdminAhora() {
   try {
     if (!user || !db) return false;
-    // vale el doc admins/<uid> O admins/<correo> (admin promovido por email)
-    const du = await db.collection("admins").doc(user.uid).get({ source: "server" });
-    if (du.exists && du.data().admin === true) return true;
-    if (user.email) {
-      const de = await db.collection("admins").doc(user.email.toLowerCase()).get({ source: "server" });
-      if (de.exists && de.data().admin === true) return true;
-    }
-    return false;
+    // ventana corta: acciones seguidas (abrir barrera y cerrarla, luces ON
+    // y OFF) no repiten la lectura - EL clic sigue funcionando al instante
+    if (Date.now() - adminVerificadoEn < 3000) return true;
+    // 1 lectura (no 2): primero el doc que nos dio el rol; si no vale, el otro
+    const leer = async id => {
+      const d = await db.collection("admins").doc(id).get({ source: "server" });
+      return !!(d.exists && d.data().admin === true);
+    };
+    let ok = false;
+    if (adminDocTipo === "correo" && user.email) ok = await leer(user.email.toLowerCase());
+    if (!ok) ok = await leer(user.uid);
+    if (!ok && user.email) ok = await leer(user.email.toLowerCase());
+    if (ok) adminVerificadoEn = Date.now();
+    return ok;
   } catch (e) { return false; }
 }
 

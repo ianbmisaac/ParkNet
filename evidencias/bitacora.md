@@ -112,3 +112,7 @@ Pendientes restantes:
 - Hardware: nuevas tarjetas 'Tests' (Probar servo, Test de cableado, Test I2C, Volver a sensores, Sincronizar) = cmds test_servo/test_cables/i2c/sensores/sync del firmware.
 - Secciones secRes/secHW ocultas por defecto en admin.html (sin login no se ve ni el shell).
 - Compromiso: 43f6bb0. Pendiente usuario: publicar reglas y F5.
+
+## 2026-11-10 - Admin demo pepe123 activo + fix de la traba de comandos
+- Cuenta Auth creada: pepe123@fixmol.demo / clave Pepe1232026 (uid PFxJLKv9aGNgpB1NwWrE2JNIAYx2). Doc admins/pepe123@fixmol.demo creado por el usuario, rol OK.
+- Fix: soyAdminAhora() solo miraba admins/<uid>; con admin por correo cada comando era rechazado ('bloqueado'). Ahora acepta admins/<uid> O admins/<correo>. Commit d4d47a1, verificado publicado.

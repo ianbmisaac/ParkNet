@@ -28,6 +28,8 @@ $ipPlaca = (arp -a | Select-String "192.168.137." | Where-Object { $_.Line -notm
 if ($ipPlaca) {
   Write-Output ""
   Write-Output ("PAGINA DE ParkNet (abrir en el telefono):  http://" + $ipPlaca)
+  Write-Output ("Abriendola tambien en el navegador del PC...")
+  Start-Process ("http://" + $ipPlaca)
 } else {
   Write-Output "Placa aun no visible en la red (espera ~30 s tras enchufarla a la corriente y re-ejecute)."
 }

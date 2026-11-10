@@ -57,6 +57,19 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Perfil del usuario: foto de perfil (miniatura comprimida por la pagina).
+    // Solo su dueno puede escribir, y solo esos dos campos.
+    match /users/{userId}/profile/{docId} {
+      allow get, list: if signedIn();
+      allow create, update: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['avatar', 'updatedAt'])
+        && request.resource.data.keys().hasAll(['avatar', 'updatedAt'])
+        && request.resource.data.avatar is string
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if request.auth.uid == userId;
+    }
+
     match /users/{userId}/reservations/{bookingId} {
       allow get, list: if (signedIn() && request.auth.uid == userId) || isAdmin();
 

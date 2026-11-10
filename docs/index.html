@@ -194,6 +194,12 @@
     }
     .logout-button { color: #c4d1cd; border-color: var(--line); }
     .user-badge { max-width: 150px; overflow: hidden; color: #dce9e4; font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
+    .user-avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 1.5px solid var(--mint); background: #0d1f18; display: none; margin-right: 7px; }
+    .user-avatar.is-on { display: inline-block; }
+    .user-avatar-edit { position: relative; overflow: hidden; padding: 0; border: 0; background: none; line-height: 0; cursor: pointer; margin-right: 7px; }
+    .user-avatar-edit::after { content: "✏"; position: absolute; inset: 0; display: grid; place-items: center; font-size: .65rem; color: #fff; background: rgba(0,0,0,.45); opacity: 0; transition: opacity .15s; border-radius: 50%; }
+    .user-avatar-edit:hover::after { opacity: 1; }
+    .user-avatar-edit input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
     .page-tabs { display: flex; gap: 7px; width: fit-content; margin: 0 0 16px; padding: 5px; border: 1px solid var(--line); border-radius: 14px; background: rgba(17,29,36,.68); }
     .page-tab { min-height: 38px; padding: 0 16px; border: 0; border-radius: 10px; color: var(--muted); background: transparent; font-size: .8rem; font-weight: 700; cursor: pointer; }
     .page-tab[aria-selected="true"] { color: #09251b; background: var(--mint); }
@@ -283,6 +289,10 @@
       </div>
       <div class="top-meta">
         <button class="auth-button" id="authButton" type="button">Iniciar sesión</button>
+        <label class="user-avatar-edit" id="userPicEdit" hidden title="Cambiar foto de perfil">
+          <img class="user-avatar" id="userPic" alt="Foto de perfil">
+          <input type="file" id="userPicInput" accept="image/*">
+        </label>
         <span class="user-badge" id="userBadge" hidden></span>
         <button class="logout-button" id="logoutButton" type="button" hidden>Cerrar sesión</button>
         <div class="live-pill"><span class="live-dot" aria-hidden="true"></span>En tiempo real</div>
@@ -819,12 +829,74 @@
           });
         });
       }
+      /* ===== foto de perfil =====
+         - cuenta Google: usa la foto de la cuenta (photoURL)
+         - cuenta de correo: sube su foto (se recorta a 128x128 y se guarda
+           comprimida en Firestore, doc users/{uid}/profile) */
+      var DEFAULT_AVATAR =
+        "data:image/svg+xml;charset=utf-8," + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">' +
+        '<rect width="64" height="64" rx="32" fill="#12342a"/>' +
+        '<circle cx="32" cy="25" r="11" fill="#9adcc3"/>' +
+        '<path d="M12 56c3-12 11-17 20-17s17 5 20 17z" fill="#9adcc3"/></svg>');
+      var avatarGuardado = "";
+      function pintaFoto(u) {
+        var img = $("userPic");
+        if (!u) { $("userPicEdit").hidden = true; return; }
+        img.src = u.photoURL || avatarGuardado || DEFAULT_AVATAR;
+        img.classList.add("is-on");
+        $("userPicEdit").hidden = false;
+        if (!u.photoURL && db) {
+          db.collection("users").doc(u.uid).collection("profile").doc("main").get()
+            .then(function (snap) {
+              if (snap.exists && snap.data().avatar) {
+                avatarGuardado = snap.data().avatar;
+                if (user === u && !user.photoURL) img.src = avatarGuardado;
+              }
+            }).catch(function () {});
+        }
+      }
+      function guardarAvatar(dataUrl) {
+        if (!user || !db) return;
+        db.collection("users").doc(user.uid).collection("profile").doc("main")
+          .set({ avatar: dataUrl, updatedAt: firebase.firestore.FieldValue.serverTimestamp() })
+          .then(function () {
+            avatarGuardado = dataUrl;
+            $("userPic").src = dataUrl;
+          }).catch(function () {
+            // sin permiso todavia (reglas del perfil no publicadas): se ignora en silencio
+          });
+      }
+      $("userPicInput").addEventListener("change", function () {
+        var file = this.files && this.files[0];
+        this.value = "";
+        if (!file || !file.type || file.type.indexOf("image/") !== 0) return;
+        if (file.size > 8388608) return;              // imagen gigante: fuera
+        var reader = new FileReader();
+        reader.onload = function () {
+          var im = new Image();
+          im.onload = function () {
+            var lado = Math.min(im.width, im.height);
+            var canvas = document.createElement("canvas");
+            canvas.width = 128; canvas.height = 128;
+            canvas.getContext("2d").drawImage(im,
+              (im.width - lado) / 2, (im.height - lado) / 2, lado, lado,
+              0, 0, 128, 128);
+            guardarAvatar(canvas.toDataURL("image/jpeg", 0.72));
+          };
+          im.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+      /* ===== fin foto de perfil ===== */
+
       function renderAuth(userValue) {
         user = userValue;
         $("authButton").hidden = !!user;
         $("userBadge").hidden = !user;
         $("logoutButton").hidden = !user;
         $("userBadge").textContent = user ? (user.displayName || user.email || "Cuenta") : "";
+        pintaFoto(userValue);
         $("loginPrompt").hidden = !!user;
         $("bookingFields").disabled = !user || !db;
         document.querySelector(".controls").hidden = !!(user && db);

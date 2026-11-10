@@ -5,6 +5,15 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // ROL ADMINISTRADOR: existe un documento admins/{uid} con admin == true.
+    // Se crea A MANO desde la consola de Firebase (las reglas no permiten
+    // auto-asignarse el rol). Ver docs/GUIA_ADMIN.md.
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.admin == true;
+    }
+
     function validSpace(spaceId) {
       return spaceId in ['A1', 'A2', 'A3'];
     }
@@ -34,14 +43,22 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)/reservations/$(request.resource.data.bookingId)).data.slotKey == slotId
         && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)/reservations/$(request.resource.data.bookingId)).data.status == 'active';
 
-      allow delete: if signedIn()
+      allow delete: if (signedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid)/reservations/$(resource.data.bookingId))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)/reservations/$(resource.data.bookingId)).data.slotKey == slotId;
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)/reservations/$(resource.data.bookingId)).data.slotKey == slotId)
+        || isAdmin();
       allow update: if false;
     }
 
+    // Registro de administradores: se escribe SOLO desde la consola
+    // (el papel permite borrarlo accidentalmente).
+    match /admins/{adminUid} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
     match /users/{userId}/reservations/{bookingId} {
-      allow get, list: if signedIn() && request.auth.uid == userId;
+      allow get, list: if (signedIn() && request.auth.uid == userId) || isAdmin();
 
       // The matching slot lock must be created in the same Firestore transaction.
       allow create: if signedIn()
@@ -66,13 +83,22 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/slots/$(request.resource.data.slotKey)).data.spaceId == request.resource.data.spaceId;
 
       // Cancellation frees the slot and marks the owner's record cancelled atomically.
-      allow update: if signedIn()
+      allow update: if (signedIn()
         && request.auth.uid == userId
         && resource.data.status == 'active'
         && request.resource.data.status == 'cancelled'
         && request.resource.data.cancelledAt == request.time
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt'])
-        && !existsAfter(/databases/$(database)/documents/slots/$(resource.data.slotKey));
+        && !existsAfter(/databases/$(database)/documents/slots/$(resource.data.slotKey)))
+        || (isAdmin()
+        && resource.data.status == 'active'
+        && request.resource.data.status == 'cancelled'
+        && request.resource.data.cancelledAt == request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt']));
+      // NOTA admin: la actualizacion del admin no exige !existsAfter del
+      // slot, porque el admin cancela primero la reserva y libera el
+      // bloqueo en la misma transaccion del cliente (ver admin.html).
+      // El borrado del bloqueo lo autoriza isAdmin() en /slots.
 
       allow delete: if false;
     }

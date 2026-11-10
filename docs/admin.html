@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ParkNet — Administración</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, sans-serif; background:#0d1117; color:#e6edf3; }
+  main { max-width: 700px; margin: 0 auto; padding: 16px; }
+  header { padding: 14px 16px 4px; }
+  h1 { font-size: 1.25rem; margin: 0; }
+  .sub { color:#8b949e; font-size:.85rem; }
+  .card { background:#161b22; border:1px solid #30363d; border-radius:12px; padding:14px; margin:10px 0; }
+  .row { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+  .ok { color:#3fb950; } .warn { color:#d29922; } .bad { color:#f85149; } .muted { color:#8b949e; }
+  button, .btn { font:inherit; border:1px solid #30363d; background:#21262d; color:#e6edf3;
+           border-radius:8px; padding:9px 14px; cursor:pointer; user-select:none; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  button:active { transform: scale(.97); }
+  .verde { border-color:#3fb950; color:#3fb950; }
+  .rojo  { border-color:#f85149; color:#f85149; }
+  input, select { font:inherit; background:#0d1117; color:#e6edf3; border:1px solid #30363d;
+                  border-radius:8px; padding:8px 10px; }
+  .tabs { display:flex; gap:8px; margin:10px 0 0; }
+  .tabs button.on { background:#388bfd26; border-color:#388bfd; color:#79c0ff; }
+  .chip { display:inline-block; padding:3px 9px; border-radius:999px; border:1px solid #30363d;
+          margin:3px 6px 3px 0; font-size:.85rem; }
+  .chip.on { border-color:#f85149; color:#f85149; }
+  .lista div.item { display:flex; justify-content:space-between; align-items:center; gap:8px;
+          padding:8px 0; border-bottom:1px dashed #21262d; font-size:.92rem; flex-wrap:wrap; }
+  #log { font-family: ui-monospace, monospace; font-size:.78rem; color:#8b949e;
+         max-height:140px; overflow:auto; white-space:pre-wrap; }
+  small, .nota { color:#8b949e; }
+  code { background:#161b22; padding:1px 5px; border-radius:5px; font-size:.85em; }
+</style>
+<script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5/dist/mqtt.min.js"></script>
+</head>
+<body>
+<header>
+  <h1>🛠️ ParkNet — Administración</h1>
+  <div class="sub">Equipo Fixmol · Feria de Informática 2026 · reservas (Firebase) + hardware (MQTT)</div>
+</header>
+<main>
+
+  <!-- ===== login + rol ===== -->
+  <div class="card" id="cardLogin" style="display:none">
+    <div class="row">
+      <strong>Ingresa con tu cuenta de administración</strong>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <input id="correo" type="email" placeholder="correo" style="flex:1;min-width:180px">
+      <input id="clave" type="password" placeholder="contraseña" style="flex:1;min-width:140px">
+      <button class="verde" id="btnEntrar">Entrar</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button id="btnGoogle">Entrar con Google</button>
+      <span class="nota" id="errLogin"></span>
+    </div>
+  </div>
+
+  <div class="card" id="cardRol" style="display:none">
+    <div class="row">
+      <span>Sesión: <strong id="quien">–</strong></span>
+      <span id="rolTxt" class="warn">verificando rol…</span>
+      <button id="btnSalir">Cerrar sesión</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <span class="nota">Tu UID: <code id="uidTxt">–</code></span>
+      <button id="btnCopiarUid">Copiar UID</button>
+    </div>
+    <div class="nota" id="ayudaAdmin" style="display:none;margin-top:8px">
+      No eres administrador todavía. En la <b>consola de Firebase</b> → Firestore →
+      crea el documento <code>admins/TU_UID</code> con campo <code>admin: true</code>
+      (usa el botón Copiar UID). Recarga esta página después.
+    </div>
+  </div>
+
+  <!-- ===== pestañas (solo admin) ===== -->
+  <div class="tabs" id="tabsUI" style="display:none">
+    <button class="on" id="tabRes">📋 Reservas</button>
+    <button id="tabHW">🅿️ Hardware</button>
+  </div>
+
+  <!-- ===== TAB reservas ===== -->
+  <section id="secRes">
+    <div class="card">
+      <div class="row">
+        <strong id="lblDia">Disponibilidad por día:</strong>
+        <input type="date" id="dia">
+        <button id="btnHoy">Hoy</button>
+        <button id="btnManana">Mañana</button>
+      </div>
+      <div class="lista" id="slotsDia" style="margin-top:8px"><span class="muted">…</span></div>
+    </div>
+    <div class="card">
+      <div class="row"><strong>Reservas activas (todas las cuentas)</strong>
+        <button id="btnRecargar">↻ recargar</button></div>
+      <div class="lista" id="reservas" style="margin-top:8px"><span class="muted">…</span></div>
+      <div class="nota" id="msgRes"></div>
+    </div>
+  </section>
+
+  <!-- ===== TAB hardware ===== -->
+  <section id="secHW" style="display:none">
+    <div class="card">
+      <div class="row"><span>MQTT</span><span id="stMqtt" class="warn">conectando…</span></div>
+      <div class="row" style="margin-top:6px">
+        <small>broker: <code id="brokerTxt">…</code> · los comandos viajan con token en <code>iot/fixmol/comando</code></small>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row"><span>Plazas</span><span id="libres" class="warn">–</span></div>
+      <div>
+        <span class="chip" id="p1">P1 (sensor): –</span>
+        <span class="chip" id="p2">P2 (web): –</span>
+        <span class="chip" id="barrChip">Barrera: –</span>
+        <span class="chip" id="tsTxt" style="border-style:dashed">sin señal</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row">
+        <button class="verde" id="bAbrir">▲ Abrir barrera</button>
+        <button class="rojo" id="bCerrar">▼ Cerrar barrera</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="bD2">Plaza 2: ocupar/liberar</button>
+        <button id="bD3">Plaza 3: ocupar/liberar</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="bLcd1">LCD → fijar FIXMOL</button>
+        <button id="bLcd0">LCD → datos</button>
+        <button id="bSync">↻ estado</button>
+      </div>
+      <div class="nota" style="margin-top:8px">La plaza 2 la controla la web (virtual). La plaza 3
+      quedará lista para el tercer espacio futuro (el firmware actual la ignora).</div>
+    </div>
+    <div class="card">
+      <div class="sub">Log</div>
+      <div id="log"></div>
+    </div>
+  </section>
+
+  <div class="card">
+    <div class="nota">Seguridad: esta página exige el documento <code>admins/{uid}</code> en Firestore
+    (rol entregado solo desde la consola — nadie puede auto-asignarse). El MQTT de administración
+    firma cada orden con el token del grupo; sin token el Arduino rechaza el comando.</div>
+  </div>
+</main>
+
+<script>
+/* ================= Firebase (config del proyecto del amigo) ================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyCaeCq4gNSRt-2qstaoOAnp7MwRNCjLoXE",
+  authDomain: "parknet-16713.firebaseapp.com",
+  projectId: "parknet-16713",
+  storageBucket: "parknet-16713.firebasestorage.app",
+  messagingSenderId: "1009696387704",
+  appId: "1:1009696387704:web:2849936a2e997ef03cf38d"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const $ = id => document.getElementById(id);
+
+let user = null, esAdmin = false, slotsViews = [], resView = null;
+
+/* ================= login / rol ================= */
+auth.onAuthStateChanged(u => {
+  user = u;
+  if (!u) {
+    $("cardLogin").style.display = ""; $("cardRol").style.display = "none";
+    $("tabsUI").style.display = "none"; salirVistas();
+    return;
+  }
+  $("cardLogin").style.display = "none"; $("cardRol").style.display = "";
+  $("quien").textContent = u.email || u.displayName || "cuenta";
+  $("uidTxt").textContent = u.uid;
+  // rol: admins/{uid}.data.admin == true  (solo escribible desde la consola)
+  db.collection("admins").doc(u.uid).get().then(doc => {
+    esAdmin = !!(doc.exists && doc.data().admin === true);
+    if (esAdmin) {
+      $("rolTxt").textContent = "ROL: administrador ✅"; $("rolTxt").className = "ok";
+      $("ayudaAdmin").style.display = "none";
+      $("tabsUI").style.display = "flex";
+      subscribirReservas(); cargarSlots();
+    } else {
+      $("rolTxt").textContent = "ROL: sin acceso ❌"; $("rolTxt").className = "bad";
+      $("ayudaAdmin").style.display = "";
+      $("tabsUI").style.display = "none"; salirVistas();
+    }
+  }).catch(e => {
+    $("rolTxt").textContent = "ROL: no se pudo verificar (¿reglas publicadas?)"; $("rolTxt").className = "warn";
+    $("ayudaAdmin").style.display = "";
+  });
+});
+
+$("btnEntrar").onclick = () => {
+  $("errLogin").textContent = "";
+  auth.signInWithEmailAndPassword($("correo").value.trim(), $("clave").value)
+    .catch(e => { $("errLogin").textContent = "Credenciales inválidas"; });
+};
+$("btnGoogle").onclick = () => {
+  $("errLogin").textContent = "";
+  auth.signInWithPopup(new firebase.auth.GoogleAuthProvider())
+    .catch(e => { $("errLogin").textContent = e.code === "auth/popup-closed-by-user" ? "" : "No se pudo abrir Google: " + e.code; });
+};
+$("btnSalir").onclick = () => auth.signOut();
+$("btnCopiarUid").onclick = () => {
+  navigator.clipboard.writeText(user ? user.uid : "").then(() => {
+    $("btnCopiarUid").textContent = "¡copiado!"; setTimeout(() => $("btnCopiarUid").textContent = "Copiar UID", 1500);
+  });
+};
+$("tabRes").onclick = () => { tab(true);  };
+$("tabHW").onclick  = () => { tab(false); };
+function tab(res) {
+  const a = $("secRes"), b = $("secHW");
+  a.style.display = res ? "" : "none"; b.style.display = res ? "none" : "";
+  $("tabRes").className = res ? "on" : ""; $("tabHW").className = res ? "" : "on";
+}
+
+/* ================= TAB reservas ================= */
+$("btnHoy").onclick    = () => pintaDia(fechaStr(new Date()));
+$("btnManana").onclick = () => pintaDia(fechaStr(diaMas(1)));
+$("dia").onchange = () => { cargarSlots(); };
+
+$("btnRecargar").onclick = () => subscribirReservas();
+
+function pad(n) { return String(n).padStart(2,"0"); }
+function fechaStr(d) { return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()); }
+function diaMas(n) { const d = new Date(); d.setDate(d.getDate()+n); return d; }
+
+function salirVistas() {
+  slotsViews.forEach(v => v()); slotsViews = [];
+  if (resView) resView(); resView = null;
+  $("slotsDia").innerHTML = "";
+  $("reservas").innerHTML = "";
+}
+
+function msgRes(t) { $("msgRes").textContent = t || ""; }
+
+function cargarSlots() {
+  slotsViews.forEach(v => v()); slotsViews = [];
+  const dia = $("dia").value;
+  $("lblDia").textContent = "Disponibilidad del " + (dia || "—");
+  if (!dia || !user || !esAdmin) return;
+  msgRes("cargando reservas del día…");
+  // slots se escriben como A1_fecha_hora; filtramos por fecha (1 campo → sin índice)
+  const v = db.collection("slots").where("date","==",dia).onSnapshot(snap => {
+    const rows = snap.docs.map(d => d.data());
+    rows.sort((a,b) => a.spaceId.localeCompare(b.spaceId) || (a.hour-b.hour));
+    const lista = $("slotsDia"); lista.innerHTML = "";
+    if (!rows.length) lista.innerHTML = '<span class="muted">sin reservas ese día (todos los espacios libres)</span>';
+    const ocupado = {};
+    rows.forEach(r => {
+      ocupado[r.spaceId] = true;
+      const d = document.createElement("div"); d.className = "item";
+      d.innerHTML = "<span>" + r.spaceId + " · " + r.hour + ":00–" + pad(Number(r.hour)+1) + ":00</span>";
+      const b = document.createElement("button"); b.className = "rojo"; b.textContent = "liberar slot";
+      b.onclick = () => liberarSlot(dia, r);
+      d.appendChild(b); lista.appendChild(d);
+    });
+    msgRes("");
+  }, e => { msgRes("no se pudo leer slots (¿reglas?): " + e.code); });
+  slotsViews.push(v);
+}
+
+// liberar un slot sin reserva activa asociada (bloqueo huérfano)
+function liberarSlot(dia, r) {
+  msgRes("liberando slot…");
+  db.collection("slots").doc(r.spaceId+"_"+dia+"_"+r.hour).delete()
+    .then(() => msgRes("slot liberado", "ok")).catch(e => msgRes("error: " + e.code));
+}
+
+function subscribirReservas() {
+  if (resView) resView(); resView = null;
+  if (!user || !esAdmin) return;
+  msgRes("cargando reservas activas…");
+  // collectionGroup: mira TODAS las sub-colecciones reservations (regla: isAdmin)
+  const v = db.collectionGroup("reservations").where("status","==","active").onSnapshot(snap => {
+    const rows = snap.docs.map(d => ({ ref: d.ref, data: d.data() }));
+    rows.sort((a,b) => (a.data.date+a.data.hour).localeCompare(b.data.date+b.data.hour));
+    const lista = $("reservas"); lista.innerHTML = "";
+    if (!rows.length) lista.innerHTML = '<span class="muted">no hay reservas activas</span>';
+    rows.forEach(r => {
+      const d = r.data;
+      const item = document.createElement("div"); item.className = "item";
+      const fecha = new Date(d.date + "T00:00:00").toLocaleDateString("es-CL",
+        { day:"numeric", month:"short", year:"numeric" });
+      item.innerHTML = "<span><strong>Espacio " + d.spaceId + "</strong> · " + fecha +
+        " · " + d.hour + ":00–" + pad(Number(d.hour)+1) + ":00" +
+        '<br><span class="muted" style="font-size:.8rem">usuario: ' + d.userId.slice(0,8) + "…</span></span>";
+      const b = document.createElement("button"); b.className = "rojo"; b.textContent = "anular";
+      b.onclick = () => anular(r);
+      item.appendChild(b); lista.appendChild(item);
+    });
+    msgRes("");
+  }, e => { msgRes("no se pudo listar (¿collectionGroup habilitado? ¿reglas admin?): " + e.code); });
+  resView = v;
+}
+
+// Anular admin = MISMA transacción atómica del usuario:
+//  marca la reserva 'cancelled' + borra el bloqueo del slot. Las reglas permiten
+//  este par a un admin pero NUNCA borra ni altera datos de otro campo.
+async function anular(r) {
+  msgRes("anulando reserva…");
+  try {
+    await db.runTransaction(async t => {
+      const snap = await t.get(r.ref);
+      if (!snap.exists || snap.data().status !== "active") throw new Error("ya no está activa");
+      // el bloqueo del slot se borra solo si coincide (patrón del cliente del amigo)
+      t.update(r.ref, {
+        status: "cancelled",
+        cancelledAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      if (r.data.slotKey) {
+        const slotRef = db.collection("slots").doc(r.data.slotKey);
+        const slotSnap = await t.get(slotRef);
+        if (slotSnap.exists && (slotSnap.data().bookingId) === r.ref.id) t.delete(slotRef);
+      }
+    });
+    msgRes("reserva anulada ✓", "ok");
+  } catch (e) { msgRes("no se pudo anular: " + e.message); }
+}
+
+/* ================= TAB hardware: MQTT con token ================= */
+const BROKERS = [
+  "wss://test.mosquitto.org:8081",
+  "wss://broker.hivemq.com:8884/mqtt",
+  "wss://broker.emqx.io:8084/mqtt"
+];
+const TOP_E = "iot/fixmol/estado", TOP_P = "iot/fixmol/plazas", TOP_C = "iot/fixmol/comando";
+const TOKEN = "fixmol2026";
+let cli = null, idxB = 0, timerB = null;
+
+function logM(m) {
+  $("log").textContent = (new Date().toLocaleTimeString() + "  " + m + "\n") +
+    $("log").textContent.split("\n").slice(0,12).join("\n");
+}
+function enviar(obj) {
+  if (!cli || !cli.connected) { logM("sin broker, reintenta"); return; }
+  obj.k = TOKEN;                       // firma todo comando con el token del grupo
+  cli.publish(TOP_C, JSON.stringify(obj));
+  logM("→ enviado: " + JSON.stringify(obj));
+}
+
+function conectarMqtt() {
+  if (idxB >= BROKERS.length) { idxB = 0; $("stMqtt").textContent = "sin broker (reintento)"; }
+  const url = BROKERS[idxB];
+  $("brokerTxt").textContent = new URL(url).host;
+  try { if (cli) cli.end(true); } catch(e){}
+  cli = mqtt.connect(url, { clientId:"panel-admin-" + Math.random().toString(16).slice(2,8),
+                            connectTimeout: 8000, reconnectPeriod: 0 });
+  cli.on("connect", () => {
+    clearInterval(timerB);
+    $("stMqtt").textContent = "conectado ✅"; $("stMqtt").className = "ok";
+    logM("conectado a " + new URL(url).host);
+    cli.subscribe([TOP_E, TOP_P]);
+  });
+  cli.on("close", () => {
+    $("stMqtt").textContent = "reconectando…"; $("stMqtt").className = "warn";
+    clearInterval(timerB);
+    timerB = setTimeout(() => { idxB++; conectarMqtt(); }, 4000);
+  });
+  cli.on("error", () => { try { cli.end(true); } catch(e){} });
+  cli.on("message", (t, msg) => {
+    const s = msg.toString();
+    $("tsTxt").textContent = "señal " + new Date().toLocaleTimeString();
+    if (t === TOP_P) $("libres").textContent = s + " libres";
+    if (t === TOP_E) {
+      try {
+        const d = JSON.parse(s);
+        $("libres").textContent = d.libres + " / " + d.total + " libres";
+        pinta("p1", (d.ocupadas[0]||0) === 1, "P1 (sensor)");
+        pinta("p2", (d.ocupadas[1]||0) === 1, "P2 (web)");
+        $("barrChip").textContent = "Barrera: " + d.barrera;
+        $("barrChip").classList.toggle("on", d.barrera !== "CERRADA");
+        logM("estado: " + s);
+      } catch(e) { logM("(ilegible) " + s); }
+    }
+  });
+}
+function pinta(id, ocupada, nombre) {
+  const el = $(id);
+  el.textContent = nombre + ": " + (ocupada ? "OCUPADA" : "LIBRE");
+  el.classList.toggle("on", ocupada);
+}
+
+$("bAbrir").onclick  = () => enviar({ cmd:"barrera", estado:"ABIERTA" });
+$("bCerrar").onclick = () => enviar({ cmd:"barrera", estado:"CERRADA" });
+$("bD2").onclick = () => enviar({ cmd:"toggle", slot:2 });
+$("bD3").onclick = () => enviar({ cmd:"toggle", slot:3 });
+$("bLcd1").onclick = () => enviar({ cmd:"lcd", modo:"fixmol" });
+$("bLcd0").onclick = () => enviar({ cmd:"lcd", modo:"datos" });
+$("bSync").onclick = () => enviar({ cmd:"sync" });
+
+/* ================= arranque ================= */
+$("dia").value = fechaStr(new Date());
+conectarMqtt();
+</script>
+</body>
+</html>

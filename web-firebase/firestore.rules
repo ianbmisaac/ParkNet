@@ -5,13 +5,18 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // ROL ADMINISTRADOR: existe un documento admins/{uid} con admin == true.
-    // Se crea A MANO desde la consola de Firebase (las reglas no permiten
-    // auto-asignarse el rol). Ver docs/GUIA_ADMIN.md.
+    // ROL ADMINISTRADOR: dos formas validas (con cualquiera vale):
+    //   1) doc admins/<uid> con admin == true (los originales, creados en consola)
+    //   2) doc admins/<correo-en-minusculas> con admin == true:
+    //      un admin promueve a otros escribiendo SOLO el correo desde el panel.
     function isAdmin() {
-      return signedIn()
-        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.admin == true;
+      return signedIn() && (
+        (exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+          && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.admin == true)
+        || (request.auth.token.email != null
+          && exists(/databases/$(database)/documents/admins/$(request.auth.token.email.toLower()))
+          && get(/databases/$(database)/documents/admins/$(request.auth.token.email.toLower())).data.admin == true)
+      );
     }
 
     function validSpace(spaceId) {
@@ -50,11 +55,22 @@ service cloud.firestore {
       allow update: if false;
     }
 
-    // Registro de administradores: se escribe SOLO desde la consola
-    // (el papel permite borrarlo accidentalmente).
-    match /admins/{adminUid} {
+    // Registro de administradores.
+    // Leer: cualquier sesion. Crear: SOLO un admin actual y solo documentos
+    // con ID = correo en minusculas, admin==true y campos exactos.
+    // Borrar: otro admin; nadie puede quitarse el rol a si mismo (el admin
+    // 'siempre' no pierde el rol ni por accidente).
+    match /admins/{adminId} {
       allow read: if signedIn();
-      allow write: if false;
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly(['admin', 'email', 'assignedAt', 'assignedBy'])
+        && request.resource.data.admin == true
+        && request.resource.data.email is string
+        && request.resource.data.email.matches('^[^@]+@[^@]+\\.[^@]+$')
+        && adminId == request.resource.data.email.toLower();
+      allow update: if false;
+      allow delete: if isAdmin()
+        && resource.data.email != request.auth.token.email;
     }
 
     // Perfil del usuario: foto de perfil (miniatura comprimida por la pagina).

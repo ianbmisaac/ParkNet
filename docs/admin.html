@@ -137,6 +137,18 @@
       <div class="lista" id="historial" style="margin-top:8px"><span class="muted">…</span></div>
       <div class="nota" id="msgHist"></div>
     </div>
+    <div class="card">
+      <div class="row"><strong>👑 Administradores</strong></div>
+      <div class="row" style="margin-top:8px">
+        <input id="correoNuevo" placeholder="correo (@) del nuevo admin" style="flex:1;min-width:170px">
+        <button id="bPromover">Hacer admin</button>
+      </div>
+      <div class="lista" id="listaAdmins" style="margin-top:8px"><span class="muted">…</span></div>
+      <div class="nota" id="msgAdmins"></div>
+      <div class="nota">Escribe el <b>correo con el que esa persona entra</b> (Google o correo+clave)
+      y pulsa Hacer admin: al volver a esta página verá ROL: administrador. Nadie puede quitarse
+      el rol a sí mismo, así el admin principal queda siempre.</div>
+    </div>
   </section>
 
   <!-- ===== TAB hardware ===== -->
@@ -194,6 +206,22 @@
       quedará lista para el tercer espacio futuro (el firmware actual la ignora).</div>
     </div>
     <div class="card">
+      <div class="row"><strong>🔧 Tests (panel anterior)</strong></div>
+      <div class="row" style="margin-top:8px;flex-wrap:wrap">
+        <button id="bTestServo">Probar servo</button>
+        <button id="bTestCables">Test de cableado</button>
+        <button id="bTestI2c">Test I2C (LCD)</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="bSensores">Volver a los sensores</button>
+        <button id="bSync2">Sincronizar</button>
+      </div>
+      <div class="nota" style="margin-top:4px">Test de cableado: muestra el valor crudo de los
+      sensores y mueve el servo 0°→90°→180°→0°. Sirve para comprobar que cada cosa está en el
+      pin que crees. "Volver a los sensores" deja la plaza 2 LIBRE; "Sincronizar" reenvía el
+      estado completo de la placa.</div>
+    </div>
+    <div class="card">
       <div class="row"><strong>Registro en vivo de la placa (logs)</strong>
         <button id="bSonido" title="activar/desactivar pitido al llegar un auto">🔔 sonido: ON</button>
         <button id="bBorrarLog">limpiar</button></div>
@@ -238,9 +266,16 @@ auth.onAuthStateChanged(u => {
   $("cardLogin").style.display = "none"; $("cardRol").style.display = "";
   $("quien").textContent = u.email || u.displayName || "cuenta";
   $("uidTxt").textContent = u.uid;
-  // rol: admins/{uid}.data.admin == true  (solo escribible desde la consola)
-  db.collection("admins").doc(u.uid).get().then(doc => {
-    esAdmin = !!(doc.exists && doc.data().admin === true);
+  // rol: admins/<uid> con admin==true, o admins/<correo> (promovido desde el panel)
+  (async () => {
+    let es = false;
+    const du = await db.collection("admins").doc(u.uid).get();
+    es = !!(du.exists && du.data().admin === true);
+    if (!es && u.email) {
+      const de = await db.collection("admins").doc(u.email.toLowerCase()).get();
+      es = !!(de.exists && de.data().admin === true);
+    }
+    esAdmin = es;
     if (esAdmin) {
       // si una pasada anterior borro la UI (doble verificacion), rearmarla
       // desde cero es mas seguro que reconstruir nodos:
@@ -249,7 +284,7 @@ auth.onAuthStateChanged(u => {
       $("ayudaAdmin").style.display = "none";
       $("tabsUI").style.display = "flex";
       tab(true);                           // muestra Reservas (secciones vienen ocultas)
-      subscribirReservas(); cargarSlots();
+      subscribirReservas(); cargarSlots(); pintarAdmins();
     } else {
       $("rolTxt").textContent = "ROL: sin acceso ❌"; $("rolTxt").className = "bad";
       $("ayudaAdmin").style.display = "";
@@ -261,7 +296,7 @@ auth.onAuthStateChanged(u => {
       if (b) b.remove();
       salirVistas();
     }
-  }).catch(e => {
+  })().catch(e => {
     const code = e && (e.code || e.message) ? (e.code || e.message) : "?";
     $("rolTxt").textContent = "ROL: no se pudo verificar [" + code + "] — reintentando…";
     $("rolTxt").className = "warn";
@@ -478,6 +513,53 @@ function subscribirReservas() {
   resView = v;
 }
 
+/* ===== admins: promover/quitar SOLO con el correo (sirve un admin actual) ===== */
+async function pintarAdmins() {
+  const lista = $("listaAdmins"), msg = $("msgAdmins");
+  if (!user || !esAdmin || !lista) return;
+  try {
+    const snap = await db.collection("admins").get();
+    lista.innerHTML = "";
+    snap.forEach(d => {
+      const correo = d.data().email || d.id;
+      const item = document.createElement("div"); item.className = "item";
+      item.innerHTML = "<span><strong>" + correo + "</strong>" +
+        '<br><span class="muted" style="font-size:.75rem">id: ' + d.id + "</span></span>";
+      const b = document.createElement("button"); b.className = "rojo"; b.textContent = "quitar";
+      const soyYo = d.id === user.uid || (user.email && d.id === user.email.toLowerCase());
+      if (soyYo) { b.disabled = true; b.textContent = "tú"; }
+      else b.onclick = async () => {
+        if (!window.confirm("¿Quitar admin a " + correo + "?")) return;
+        try { await d.ref.delete(); msg.textContent = "quitado ✓"; pintarAdmins(); }
+        catch (e) { msg.textContent = "no se pudo: " + e.code; }
+      };
+      item.appendChild(b); lista.appendChild(item);
+    });
+    msg.textContent = "";
+  } catch (e) { msg.textContent = "no se pudo listar: " + e.code; }
+}
+$("bPromover").onclick = async () => {
+  const msg = $("msgAdmins");
+  const correo = ($("correoNuevo").value || "").trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo)) { msg.textContent = "correo no válido"; return; }
+  if (!user || !esAdmin) return;
+  if (!(await soyAdminAhora())) { msg.textContent = "🔒 solo un admin actual puede promover"; return; }
+  msg.textContent = "creando admin…";
+  try {
+    await db.collection("admins").doc(correo).set({
+      admin: true,
+      email: correo,
+      assignedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      assignedBy: user.uid
+    });
+    $("correoNuevo").value = "";
+    msg.textContent = correo + " es admin ✓ — entra a esta página con ese correo y verá su rol";
+    pintarAdmins();
+  } catch (e) {
+    msg.textContent = "no se pudo: " + e.code + (e.code === "permission-denied" ? " (¿reglas nuevas publicadas?)" : "");
+  }
+};
+
 async function anular(r) {
   //  marca la reserva 'cancelled' + borra el bloqueo del slot. Las reglas permiten
   //  este par a un admin pero NUNCA borra ni altera datos de otro campo.
@@ -645,6 +727,13 @@ $("bSonido").onclick = () => {
 $("bLucesOn").onclick  = () => enviar({ cmd:"luces", modo:"ON" });
 $("bLucesOff").onclick = () => enviar({ cmd:"luces", modo:"OFF" });
 $("bLucesAuto").onclick = () => enviar({ cmd:"luces", modo:"AUTO" });
+
+// tests del panel anterior (parknet_panel.h los implemento en el Arduino)
+$("bTestServo").onclick  = () => enviar({ cmd:"test_servo" });
+$("bTestCables").onclick = () => enviar({ cmd:"test_cables" });
+$("bTestI2c").onclick    = () => enviar({ cmd:"i2c" });
+$("bSensores").onclick   = () => enviar({ cmd:"sensores" });
+$("bSync2").onclick      = () => enviar({ cmd:"sync" });
 $("bTxt").onclick = () => {
   const t1 = $("lcdL1").value.trim(), t2 = $("lcdL2").value.trim();
   if (!t1 && !t2) { logM("escribe al menos la linea 1"); return; }

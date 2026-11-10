@@ -13,8 +13,8 @@
     { x: -.15, color: ["#ffbf76", "#d67730", "#9e4c24"] },
     { x: 2.35, color: ["#c6a6ff", "#885bcc", "#603f9b"] }
   ];
-  const barrier = { from: 0, to: 0, start: 0, duration: 680 };
-  const cars = stalls.map(() => ({ from: 0, to: 0, start: 0, duration: 2300, reported: false }));
+  const barrier = { from: 0, to: 0, start: 0, duration: 900 };
+  const cars = stalls.map(() => ({ from: 0, to: 0, start: 0, duration: 3200, reported: false }));
   let synced = false;
   let frame = 0;
 
@@ -66,11 +66,18 @@
   }
 
   function drawCar(faces, stall, progress, index) {
-    const distance = (1 - progress) * (6.8 - stall.x + 3.4);
     const lane = 1.45 + index * .31;
-    const x = stall.x + Math.max(0, distance - 3.4);
-    const z = lane - Math.max(0, 3.4 - distance) * (lane + 1.65) / 3.4;
-    const angle = Math.PI / 2 * Math.max(0, Math.min(1, (distance - 2.65) / 1.5));
+    const radius = 1.15;
+    const entry = 10.8;
+    const turnX = stall.x + radius;
+    const turnZ = lane - radius;
+    const straight = entry - turnX;
+    const arc = Math.PI / 2 * radius;
+    const distance = progress * (straight + arc + turnZ + 1.65);
+    const turn = Math.min(Math.PI / 2, Math.max(0, (distance - straight) / radius));
+    const x = turnX - radius * Math.sin(turn) + Math.max(0, straight - distance);
+    const z = turnZ + radius * Math.cos(turn) - Math.max(0, distance - straight - arc);
+    const angle = Math.PI / 2 - turn;
     const sin = Math.sin(angle), cos = Math.cos(angle);
     const transform = ([px, py, pz]) => [x + px * cos + pz * sin, py, z - px * sin + pz * cos];
     const dark = ["#27323c", "#151a21", "#0b0e13"];

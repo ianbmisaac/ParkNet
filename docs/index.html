@@ -210,18 +210,6 @@
     .booking-grid { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(260px,.95fr); gap: 14px; align-items: start; }
     .booking-card { min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: 18px; background: rgba(17,29,36,.82); }
     .booking-card h3 { margin: 0 0 15px; font-size: .92rem; }
-    /* grilla de reserva: horas x espacios */
-    .g-res { display: grid; grid-template-columns: 52px repeat(3, minmax(0,1fr)); gap: 4px; }
-    .g-res .g-head { font-size: .72rem; font-weight: 700; color: #8fb8a8; text-align: center; padding: 3px 0; }
-    .g-res .g-hora { font-size: .72rem; color: var(--muted); align-self: center; }
-    .g-res .g-c { min-height: 30px; border: 1px solid var(--line); border-radius: 9px;
-      font-size: .74rem; font-weight: 700; color: #dce9e4; background: rgba(255,255,255,.04);
-      cursor: pointer; text-align: center; line-height: 28px; padding: 0 4px; transition: transform .08s; }
-    .g-res .g-c:disabled { opacity: .35; cursor: not-allowed; }
-    .g-res .g-c.libre { border-color: #2f7d63; background: rgba(154,220,195,.16); color: #bfe9db; }
-    .g-res .g-c.occ { background: rgba(248,81,73,.14); border-style: dashed; color: #f48f85; cursor: not-allowed; }
-    .g-res .g-c.pasada { opacity: .25; cursor: not-allowed; }
-    .g-res .g-c:not(:disabled):active { transform: scale(.95); }
     .booking-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0; padding: 0; border: 0; }
     .field { display: grid; gap: 7px; color: #c8d8d3; font-size: .75rem; font-weight: 650; }
     .field input { width: 100%; min-height: 43px; padding: 0 11px; border: 1px solid var(--line); border-radius: 11px; color: var(--text); background: #0c171c; font: inherit; font-size: .82rem; color-scheme: dark; }
@@ -528,9 +516,6 @@
           <p class="duration-note">Duración fija: 1 hora · Hora local</p>
           <h3>Selecciona un espacio</h3>
           <div class="space-picker" id="spaceChoices" role="group" aria-label="Selecciona un estacionamiento"></div>
-          <h3>Grilla del día — reserva directa</h3>
-          <div class="g-res" id="gRes" role="grid" aria-label="Horas y espacios libres del dia"></div>
-          <p class="firebase-note" id="gNota">Toca una celda verde para reservar al instante.</p>
           <button class="reserve-button" id="reserveButton" type="submit" disabled>Reservar espacio</button>
           <p class="booking-status" id="bookingStatus" role="status" aria-live="polite"></p>
           <p class="firebase-note" id="bookingConfigNote"></p>
@@ -688,7 +673,6 @@
   <script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore-compat.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script>
     (function () {
       "use strict";
@@ -861,8 +845,20 @@
         });
       }
       // Dialog del QR: modal con el codigo de la reserva (PN|slot|pin)
+      // Generador QR: se carga bajo demanda con import dinamico (la version
+      // script del CDN daba 404, por eso el boton no hacia nada antes).
       var qrDialog = null;
       function mostrarQr(booking) {
+        var arrancar = function () { pintarQr(booking); };
+        if (typeof QRCode !== "undefined") { arrancar(); return; }
+        import("https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm").then(function (m) {
+          window.QRCode = m.default || m;
+          arrancar();
+        }).catch(function () {
+          window.alert("No se pudo cargar el generador de QR (revisa tu conexion).");
+        });
+      }
+      function pintarQr(booking) {
         if (typeof QRCode === "undefined") return;
         if (!qrDialog) {
           qrDialog = document.createElement("dialog");
@@ -980,11 +976,9 @@
         if (user) {
           if ($("authDialog").open) $("authDialog").close();
           subscribeBookings();
-          suscribirGrid();
         } else {
           if (bookingsListener) bookingsListener();
           bookingsListener = null;
-          suscribirGrid();   // cierra el listener de la grilla y limpia
           $("reservationList").innerHTML = '<p class="empty-reservations">Inicia sesión para ver tus reservas.</p>';
         }
         refreshAvailability();
@@ -1043,75 +1037,7 @@
           $("reservationList").textContent = "No se pudieron cargar tus reservas. Revisa las reglas.";
         });
       }
-      /* === grilla del dia: horas x espacios, reserva directa === */
-      var gridUnsub = null;
-      function horarioPasado(dateStr, hour) {
-        var hoy = localDate(new Date());
-        var ahoraH = new Date().getHours();
-        return dateStr < hoy || (dateStr === hoy && Number(hour) <= ahoraH);
-      }
-      function renderGrid(occMap) {
-        var cont = $("gRes");
-        if (!cont || !user || !db) return;
-        var dia = $("bookingDate").value;
-        cont.replaceChildren();
-        cont.appendChild(celda("", "g-head"));
-        for (var c = 0; c < spaces.length; c++) cont.appendChild(celda(spaces[c], "g-head"));
-        for (var h = 7; h <= 23; h++) {
-          var hh = pad(h);
-          cont.appendChild(celda(hh + ":00", "g-hora"));
-          for (var s = 0; s < spaces.length; s++) {
-            var sid = spaces[s];
-            var key = slotKey(sid, dia, hh);
-            var occ = occMap && occMap[key];
-            var b = celda("", "g-c");
-            b.dataset.space = sid; b.dataset.hour = hh;
-            if (occ) {
-              b.classList.add("occ"); b.textContent = "OCUPADO"; b.disabled = true;
-            } else if (horarioPasado(dia, hh)) {
-              b.classList.add("pasada"); b.textContent = "—"; b.disabled = true;
-            } else {
-              b.classList.add("libre"); b.textContent = "Reservar";
-              b.disabled = !user || !db;
-              (function (sp, hh) {
-                b.addEventListener("click", function () {
-                  reservaDirecta(sp, hh);
-                });
-              })(sid, hh);
-            }
-            cont.appendChild(b);
-          }
-        }
-      }
-      function celda(txt, cls) {
-        var d = document.createElement("div");
-        d.className = cls; d.textContent = txt;
-        return d;
-      }
-      function suscribirGrid() {
-        if (gridUnsub) { gridUnsub(); gridUnsub = null; }
-        if (!user || !db) { renderGrid(null); return; }
-        var dia = $("bookingDate").value;
-        if (!dia) return;
-        gridUnsub = db.collection("slots").where("date", "==", dia).onSnapshot(function (snap) {
-          var map = {};
-          snap.docs.forEach(function (doc) { map[doc.id] = true; });
-          renderGrid(map);
-        }, function () {
-          $("gNota").textContent = "No se pudo cargar la grilla (revisa las reglas).";
-        });
-      }
-      async function reservaDirecta(spaceId, hour) {
-        if (!user || !db) { openAuth("login"); return; }
-        var dia = $("bookingDate").value;
-        if (horarioPasado(dia, hour)) { setMessage("Esa hora ya pasó. Elige una celda verde.", "error"); return; }
-        var msg = "Reservar ESPACIO " + spaceId + " · " + dia + " · " + hour +
-          ":00–" + pad(Number(hour) + 1) + ":00?";
-        if (!window.confirm(msg)) return;
-        selectedSpace = spaceId;
-        await confirmarReserva(spaceId, hour);
-      }
-      /* === fin grilla === */
+      /* === fin QR === */
 
       async function createBooking(event) {
         event.preventDefault();
@@ -1124,11 +1050,9 @@
         }
         if (!user) { openAuth("login"); return; }
         var date = $("bookingDate").value;
-        var hour = hourOverride !== null && hourOverride !== undefined ? hourOverride : hourValue();
-        var spaceId = spaceOverride !== null && spaceOverride !== undefined ? spaceOverride : selectedSpace;
-        var viaGrilla = spaceOverride != null;
-        if (!viaGrilla && !validSlot()) { setMessage("Elige una fecha futura y una hora en punto.", "error"); return; }
-        if (!date || !hour) { setMessage("Elije fecha y hora.", "error"); return; }
+        var hour = hourValue();
+        var spaceId = selectedSpace;
+        if (!validSlot()) { setMessage("Elige una fecha futura y una hora en punto.", "error"); return; }
         var key = slotKey(spaceId, date, hour);
         var slotRef = db.collection("slots").doc(key);
         var bookings = db.collection("users").doc(user.uid).collection("reservations");
@@ -1308,10 +1232,7 @@
         }
       });
       $("bookingForm").addEventListener("submit", createBooking);
-      $("bookingDate").addEventListener("change", function () {
-        refreshAvailability();
-        suscribirGrid();
-      });
+      $("bookingDate").addEventListener("change", refreshAvailability);
       $("bookingTime").addEventListener("change", refreshAvailability);
       document.addEventListener("click", function (event) {
         var spot = event.target.closest && event.target.closest(".parking-spot");

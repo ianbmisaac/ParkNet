@@ -232,7 +232,7 @@ auth.onAuthStateChanged(u => {
   user = u;
   if (!u) {
     $("cardLogin").style.display = ""; $("cardRol").style.display = "none";
-    $("tabsUI").style.display = "none"; salirVistas();
+    const t = $("tabsUI"); if (t) t.style.display = "none"; salirVistas();
     return;
   }
   $("cardLogin").style.display = "none"; $("cardRol").style.display = "";
@@ -249,7 +249,13 @@ auth.onAuthStateChanged(u => {
     } else {
       $("rolTxt").textContent = "ROL: sin acceso ❌"; $("rolTxt").className = "bad";
       $("ayudaAdmin").style.display = "";
-      $("tabsUI").style.display = "none"; salirVistas();
+      // blindaje anti-URL: a quien no es admin se le ELIMINA del DOM toda la
+      // interfaz (pestañas, reservas, barrera, luces, camara). Abrir la pagina
+      // por la url o mirar DevTools no revela nada: los nodos ya no existen.
+      $("tabsUI").remove();
+      $("secRes").remove();
+      $("secHW").remove();
+      salirVistas();
     }
   }).catch(e => {
     $("rolTxt").textContent = "ROL: no se pudo verificar (¿reglas publicadas?)"; $("rolTxt").className = "warn";
@@ -390,8 +396,9 @@ function diaMas(n) { const d = new Date(); d.setDate(d.getDate()+n); return d; }
 function salirVistas() {
   slotsViews.forEach(v => v()); slotsViews = [];
   if (resView) resView(); resView = null;
-  $("slotsDia").innerHTML = "";
-  $("reservas").innerHTML = "";
+  const s = $("slotsDia"), r = $("reservas");
+  if (s) s.innerHTML = "";
+  if (r) r.innerHTML = "";
 }
 
 function msgRes(t) { $("msgRes").textContent = t || ""; }

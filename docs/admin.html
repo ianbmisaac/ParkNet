@@ -128,6 +128,15 @@
       <div class="lista" id="reservas" style="margin-top:8px"><span class="muted">…</span></div>
       <div class="nota" id="msgRes"></div>
     </div>
+    <div class="card">
+      <div class="row"><strong>📜 Historial completo</strong>
+        <span class="row" style="gap:6px">
+          <button id="hT">Todas</button><button id="hA">Activas</button><button id="hC">Canceladas</button>
+        </span>
+      </div>
+      <div class="lista" id="historial" style="margin-top:8px"><span class="muted">…</span></div>
+      <div class="nota" id="msgHist"></div>
+    </div>
   </section>
 
   <!-- ===== TAB hardware ===== -->
@@ -313,6 +322,10 @@ function escanearFrame() {
 // Valida un PIN contra Firestore; admite el formato del QR (PN|slot|pin)
 // o un PIN manual (busca cualquier reserva activa con ese pin).
 async function validarTokenQr(payload) {
+  if (!(await soyAdminAhora())) {
+    muestraQr("🔒 Solo un administrador puede validar ingresos.", false);
+    return;
+  }
   const partes = String(payload).split("|");
   let pin = partes.length >= 3 ? partes[2] : payload;
   pin = String(pin).trim();
@@ -420,6 +433,7 @@ function subscribirReservas() {
   if (resView) resView(); resView = null;
   if (!user || !esAdmin) return;
   msgRes("cargando reservas activas…");
+  cargarHistorial("todas");
   // collectionGroup: mira TODAS las sub-colecciones reservations (regla: isAdmin)
   const v = db.collectionGroup("reservations").where("status","==","active").onSnapshot(snap => {
     const rows = snap.docs.map(d => ({ ref: d.ref, data: d.data() }));
@@ -443,10 +457,9 @@ function subscribirReservas() {
   resView = v;
 }
 
-// Anular admin = MISMA transacción atómica del usuario:
-//  marca la reserva 'cancelled' + borra el bloqueo del slot. Las reglas permiten
-//  este par a un admin pero NUNCA borra ni altera datos de otro campo.
 async function anular(r) {
+  //  marca la reserva 'cancelled' + borra el bloqueo del slot. Las reglas permiten
+  //  este par a un admin pero NUNCA borra ni altera datos de otro campo.
   msgRes("anulando reserva…");
   try {
     await db.runTransaction(async t => {
@@ -467,6 +480,50 @@ async function anular(r) {
   } catch (e) { msgRes("no se pudo anular: " + e.message); }
 }
 
+/* ===== historial completo de reservas (todas las cuentas) ===== */
+let historialCache = [];
+async function cargarHistorial(filtro) {
+  const lista = $("historial"), msg = $("msgHist");
+  if (!user || !esAdmin) return;
+  msg.textContent = "cargando…"; lista.innerHTML = "";
+  try {
+    const snap = await db.collectionGroup("reservations").limit(200).get();
+    historialCache = snap.docs.map(d => d.data());
+    pintarHistorial(filtro);
+  } catch (e) { msg.textContent = "no se pudo cargar: " + e.code; }
+}
+function pintarHistorial(filtro) {
+  const lista = $("historial"), msg = $("msgHist");
+  lista.innerHTML = "";
+  let filas = historialCache;
+  if (filtro === "activas") filas = filas.filter(x => x.status === "active");
+  if (filtro === "canceladas") filas = filas.filter(x => x.status === "cancelled");
+  filas.sort((a,b) => ((b.date||"")+(b.hour||"")).localeCompare((a.date||"")+(a.hour||"")));
+  ["hT","hA","hC"].forEach(id => { $(id).style.borderColor = "#30363d"; $(id).style.color = "#e6edf3"; });
+  if (filtro === "todas")     { $("hT").style.borderColor = "#79c0ff"; $("hT").style.color = "#79c0ff"; }
+  if (filtro === "activas")   { $("hA").style.borderColor = "#3fb950"; $("hA").style.color = "#3fb950"; }
+  if (filtro === "canceladas"){ $("hC").style.borderColor = "#f85149"; $("hC").style.color = "#f85149"; }
+  const ico = x => x.checkedIn ? "🚗 pasó barrera" : (x.status === "active" ? "✅ activa" : "❌ cancelada");
+  if (!filas.length) { lista.innerHTML = '<span class="muted">nada por aquí</span>'; msg.textContent = ""; return; }
+  filas.forEach(x => {
+    const d = document.createElement("div"); d.className = "item";
+    const fecha = x.date ? new Date(x.date + "T00:00:00").toLocaleDateString("es-CL", { day:"numeric", month:"short" }) : "–";
+    d.innerHTML = "<span><strong>" + (x.spaceId||"?") + "</strong> · " + fecha +
+      " · " + (x.hour||"?") + ":00" +
+      '<br><span class="muted" style="font-size:.78rem">' + "usuario: " +
+      (x.userId ? x.userId.slice(0,10) : "?") + "…</span></span>";
+    const st = document.createElement("span");
+    st.className = "chip " + (x.status==="active" && !x.checkedIn ? "on" : "");
+    st.textContent = ico(x);
+    d.appendChild(st);
+    lista.appendChild(d);
+  });
+  msg.textContent = filas.length + " reserva(s)";
+}
+$("hT").onclick = () => pintarHistorial("todas");
+$("hA").onclick = () => pintarHistorial("activas");
+$("hC").onclick = () => pintarHistorial("canceladas");
+
 /* ================= TAB hardware: MQTT con token ================= */
 const BROKERS = [
   "wss://test.mosquitto.org:8081",
@@ -482,8 +539,12 @@ function logM(m) {
   $("log").textContent = (new Date().toLocaleTimeString() + "  " + m + "\n") +
     $("log").textContent.split("\n").slice(0,40).join("\n");
 }
-function enviar(obj) {
+async function enviar(obj) {
   if (!cli || !cli.connected) { logM("sin broker, reintenta"); return; }
+  if (!(await soyAdminAhora())) {
+    logM("🔒 bloqueado: solo un administrador mueve el Arduino");
+    return;
+  }
   obj.k = TOKEN;                       // firma todo comando con el token del grupo
   cli.publish(TOP_C, JSON.stringify(obj));
   logM("→ enviado: " + JSON.stringify(obj));
@@ -535,6 +596,17 @@ function pinta(id, ocupada, nombre) {
   const el = $(id);
   el.textContent = nombre + ": " + (ocupada ? "OCUPADA" : "LIBRE");
   el.classList.toggle("on", ocupada);
+}
+
+/* ===== barra de seguridad: cada accion de hardware re-verifica el rol
+   AHORA (contra Firestore). Cambiar la URL no sirve: solo quien tiene el
+   doc admins/{uid} puede mover el Arduino ===== */
+async function soyAdminAhora() {
+  try {
+    if (!user) return false;
+    const d = await db.collection("admins").doc(user.uid).get({ source: "server" });
+    return !!(d.exists && d.data().admin === true);
+  } catch (e) { return false; }
 }
 
 $("bAbrir").onclick  = () => enviar({ cmd:"barrera", estado:"ABIERTA" });

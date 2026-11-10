@@ -694,16 +694,18 @@ function conectarMqtt() {
     timerB = setTimeout(() => { idxB++; conectarMqtt(); }, 4000);
   });
   cli.on("error", () => { try { cli.end(true); } catch(e){} });
+  let estadoRecibido = false;
   cli.on("message", (t, msg) => {
     const s = msg.toString();
     $("tsTxt").textContent = "señal " + new Date().toLocaleTimeString();
-    if (t === TOP_P) $("libres").textContent = s + " libres";
+    if (t === TOP_P && !estadoRecibido) $("libres").textContent = s + " libres";
     if (t === TOP_S) logM("servo ← " + s);
     if (t === TOP_L) {
       logM("Arduino → " + s);
       const sensor = s.startsWith("SENSOR:") && s.match(/\b(OCUPADA|LIBRE)\b/);
       if (sensor) {
-        const ocupada = sensor[1] === "OCUPADA";
+        // La placa instalada reporta la señal de P1 con la polaridad invertida.
+        const ocupada = sensor[1] === "LIBRE";
         pinta("p1", ocupada, "P1 (sensor)");
         window.ParkNetView?.updateP1(ocupada);
         if (ocupada) alarmaLlegada(s);
@@ -713,6 +715,12 @@ function conectarMqtt() {
     if (t === TOP_E) {
       try {
         const d = JSON.parse(s);
+        const p1Reportada = d.ocupadas[0];
+        if (p1Reportada === 0 || p1Reportada === 1) {
+          d.ocupadas[0] = 1 - p1Reportada;
+          d.libres += p1Reportada - d.ocupadas[0];
+          estadoRecibido = true;
+        }
         $("libres").textContent = d.libres + " / " + d.total + " libres";
         pinta("p1", (d.ocupadas[0]||0) === 1, "P1 (sensor)");
         pinta("p2", (d.ocupadas[1]||0) === 1, "P2 (web)");

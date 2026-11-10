@@ -89,7 +89,7 @@
   </div>
 
   <!-- ===== TAB reservas ===== -->
-  <section id="secRes">
+  <section id="secRes" style="display:none">
     <div class="card">
       <div class="row"><strong>📷 Entrada por QR (cámara del PC)</strong>
         <span id="qrEstado" class="muted">cámara apagada</span>
@@ -242,19 +242,23 @@ auth.onAuthStateChanged(u => {
   db.collection("admins").doc(u.uid).get().then(doc => {
     esAdmin = !!(doc.exists && doc.data().admin === true);
     if (esAdmin) {
+      // si una pasada anterior borro la UI (doble verificacion), rearmarla
+      // desde cero es mas seguro que reconstruir nodos:
+      if (!$("tabsUI")) { location.reload(); return; }
       $("rolTxt").textContent = "ROL: administrador ✅"; $("rolTxt").className = "ok";
       $("ayudaAdmin").style.display = "none";
       $("tabsUI").style.display = "flex";
+      tab(true);                           // muestra Reservas (secciones vienen ocultas)
       subscribirReservas(); cargarSlots();
     } else {
       $("rolTxt").textContent = "ROL: sin acceso ❌"; $("rolTxt").className = "bad";
       $("ayudaAdmin").style.display = "";
-      // blindaje anti-URL: a quien no es admin se le ELIMINA del DOM toda la
-      // interfaz (pestañas, reservas, barrera, luces, camara). Abrir la pagina
-      // por la url o mirar DevTools no revela nada: los nodos ya no existen.
-      $("tabsUI").remove();
-      $("secRes").remove();
-      $("secHW").remove();
+      // blindaje anti-URL (idempotente): a quien no es admin se le ELIMINA del
+      // DOM toda la interfaz. Si la verificacion corre dos veces, no se cae.
+      const t = $("tabsUI"), a = $("secRes"), b = $("secHW");
+      if (t) t.remove();
+      if (a) a.remove();
+      if (b) b.remove();
       salirVistas();
     }
   }).catch(e => {
@@ -292,6 +296,7 @@ $("tabRes").onclick = () => { tab(true);  };
 $("tabHW").onclick  = () => { tab(false); };
 function tab(res) {
   const a = $("secRes"), b = $("secHW");
+  if (!a || !b) return;                    // UI ya eliminada (no-admin)
   a.style.display = res ? "" : "none"; b.style.display = res ? "none" : "";
   $("tabRes").className = res ? "on" : ""; $("tabHW").className = res ? "" : "on";
 }

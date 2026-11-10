@@ -100,3 +100,8 @@ Pendientes restantes:
 - Firmware confirma: AUTO = ENCENDIDO LIBRE / APAGADO OCUPADA. Pin 12 = plaza 1 (con sensor IR), pin 10 = plaza 2 (virtual).
 - El LED 12 estaba apagado porque la plaza 1 estaba OCUPADA (sensor bloqueado). Comportamiento correcto.
 - Test de comprobar: Luces:ON prende los 3 LEDs (12, 8, 10) sin importar el sensor; volver a AUTO despues.
+
+## 2026-11-10 - 'ROL: sin acceso': doc admins malformado
+- Verificado en vivo: reglas OK (lectura de admins permitida, 404 para docs inexistentes; admin.html conecta bien con navegador limpio).
+- Se listaron 3 docs de admins/proyecto: dos con admin=true correctos; el tercero (uid 4g60KzQYg2NX51e65915, creado hoy 06:42) tiene campo admin VACIO (no booleano). Causa del 'ROL: sin acceso'.
+- Fix: editar ese doc en consola y definir admin = booleano true. Limpieza: cuentas probe borradas.

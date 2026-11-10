@@ -28,6 +28,7 @@
   .chip { display:inline-block; padding:3px 9px; border-radius:999px; border:1px solid #30363d;
           margin:3px 6px 3px 0; font-size:.85rem; }
   .chip.on { border-color:#f85149; color:#f85149; }
+  @keyframes pulsa { 50% { opacity:.35; } }
   .lista div.item { display:flex; justify-content:space-between; align-items:center; gap:8px;
           padding:8px 0; border-bottom:1px dashed #21262d; font-size:.92rem; flex-wrap:wrap; }
   #log { font-family: ui-monospace, monospace; font-size:.78rem; color:#8b949e;
@@ -143,6 +144,7 @@
         <span class="chip" id="p1">P1 (sensor): –</span>
         <span class="chip" id="p2">P2 (web): –</span>
         <span class="chip" id="barrChip">Barrera: –</span>
+        <span class="chip" id="alertaChip" style="display:none;border-color:#d29922;color:#d29922;animation:pulsa 1s infinite">🚨 AUTO ENTRANDO (slot 1)</span>
         <span class="chip" id="tsTxt" style="border-style:dashed">sin señal</span>
       </div>
     </div>
@@ -160,11 +162,31 @@
         <button id="bLcd0">LCD → datos</button>
         <button id="bSync">↻ estado</button>
       </div>
+      <div class="row" style="margin-top:10px">
+        <strong>Luces (LEDs de plazas)</strong>
+        <button id="bLucesOn" class="verde">Luces: ON</button>
+        <button id="bLucesOff" class="rojo">Luces: OFF</button>
+        <button id="bLucesAuto">Luces: automáticas</button>
+      </div>
+      <div class="nota" style="margin-top:4px">Automático = verde cuando la plaza está
+      LIBRE; se apaga cuando llega el auto (y aquí suena la alarma del admin).</div>
+      <div class="row" style="margin-top:10px">
+        <strong>Pantalla personalizada</strong>
+      </div>
+      <div class="row" style="margin-top:4px">
+        <input id="lcdL1" maxlength="16" placeholder="línea 1 (16 car.)" style="flex:1;min-width:140px">
+        <input id="lcdL2" maxlength="16" placeholder="línea 2 (16 car.)" style="flex:1;min-width:140px">
+        <button id="bTxt">Mostrar en LCD</button>
+      </div>
+      <div class="nota" style="margin-top:4px">Modo DATOS = "LIBRES: x/2" + rotación
+      P1/P2/Barrera. Con el texto propio el admin escribe cualquier mensaje
+      (bienvenida, hora de cierre, promociones…).</div>
       <div class="nota" style="margin-top:8px">La plaza 2 la controla la web (virtual). La plaza 3
       quedará lista para el tercer espacio futuro (el firmware actual la ignora).</div>
     </div>
     <div class="card">
       <div class="row"><strong>Registro en vivo de la placa (logs)</strong>
+        <button id="bSonido" title="activar/desactivar pitido al llegar un auto">🔔 sonido: ON</button>
         <button id="bBorrarLog">limpiar</button></div>
       <div id="log" style="max-height:220px"></div>
       <small>Sensor IR, barrera, pantalla, comandos aceptados y rechazos de seguridad
@@ -491,7 +513,11 @@ function conectarMqtt() {
     $("tsTxt").textContent = "señal " + new Date().toLocaleTimeString();
     if (t === TOP_P) $("libres").textContent = s + " libres";
     if (t === TOP_S) logM("servo ← " + s);
-    if (t === TOP_L) logM("Arduino → " + s);
+    if (t === TOP_L) {
+      logM("Arduino → " + s);
+      if (s.indexOf("SENSOR:") === 0 && s.indexOf("OCUPADA") !== -1) alarmaLlegada(s);
+      if (s.indexOf("SENSOR:") === 0 && s.indexOf("LIBRE") !== -1) $("alertaChip").style.display = "none";
+    }
     if (t === TOP_E) {
       try {
         const d = JSON.parse(s);
@@ -519,6 +545,40 @@ $("bLcd1").onclick = () => enviar({ cmd:"lcd", modo:"fixmol" });
 $("bLcd0").onclick = () => enviar({ cmd:"lcd", modo:"datos" });
 $("bSync").onclick = () => enviar({ cmd:"sync" });
 $("bBorrarLog").onclick = () => { $("log").textContent = ""; };
+$("bSonido").onclick = () => {
+  alarmaSonido = !alarmaSonido;
+  $("bSonido").textContent = alarmaSonido ? "🔔 sonido: ON" : "🔕 sonido: OFF";
+};
+$("bLucesOn").onclick  = () => enviar({ cmd:"luces", modo:"ON" });
+$("bLucesOff").onclick = () => enviar({ cmd:"luces", modo:"OFF" });
+$("bLucesAuto").onclick = () => enviar({ cmd:"luces", modo:"AUTO" });
+$("bTxt").onclick = () => {
+  const t1 = $("lcdL1").value.trim(), t2 = $("lcdL2").value.trim();
+  if (!t1 && !t2) { logM("escribe al menos la linea 1"); return; }
+  const o = { cmd:"texto", texto: t1 || " " };
+  if (t2) o.l2 = t2;
+  enviar(o);
+};
+
+/* ===== alarma de llegada: SENSOR en el log => señal visual + pitido ===== */
+let alarmaSonido = true;
+let alarmaTic = null;
+function alarmaLlegada(mensaje) {
+  const c = $("alertaChip");
+  c.style.display = ""; c.style.display = "inline-block";
+  clearInterval(alarmaTic);
+  alarmaTic = setTimeout(() => { c.style.display = "none"; }, 8000);
+  if (!alarmaSonido) return;
+  try {
+    const ctx = alarmaLlegada.ctx || (alarmaLlegada.ctx = new (window.AudioContext || window.webkitAudioContext)());
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = "sine"; o.frequency.value = 880;
+    g.gain.setValueAtTime(.25, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .5);
+    o.start(); o.stop(ctx.currentTime + .5);
+  } catch (e) {}
+}
 
 /* ================= arranque ================= */
 $("dia").value = fechaStr(new Date());

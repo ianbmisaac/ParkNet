@@ -28,6 +28,9 @@
   .chip { display:inline-block; padding:3px 9px; border-radius:999px; border:1px solid #30363d;
           margin:3px 6px 3px 0; font-size:.85rem; }
   .chip.on { border-color:#f85149; color:#f85149; }
+  .park-view h2 { font-size:1rem; margin:0; }
+  .park-view canvas { display:block; width:100%; height:auto; margin:10px 0 6px;
+                      border:1px solid #30363d; border-radius:8px; background:#0d151e; }
   @keyframes pulsa { 50% { opacity:.35; } }
   .lista div.item { display:flex; justify-content:space-between; align-items:center; gap:8px;
           padding:8px 0; border-bottom:1px dashed #21262d; font-size:.92rem; flex-wrap:wrap; }
@@ -164,6 +167,7 @@
       <div>
         <span class="chip" id="p1">P1 (sensor): –</span>
         <span class="chip" id="p2">P2 (web): –</span>
+        <span class="chip" id="p3">P3: sin datos</span>
         <span class="chip" id="barrChip">Barrera: –</span>
         <span class="chip" id="alertaChip" style="display:none;border-color:#d29922;color:#d29922;animation:pulsa 1s infinite">🚨 AUTO ENTRANDO (slot 1)</span>
         <span class="chip" id="tsTxt" style="border-style:dashed">sin señal</span>
@@ -205,6 +209,15 @@
       <div class="nota" style="margin-top:8px">La plaza 2 la controla la web (virtual). La plaza 3
       quedará lista para el tercer espacio futuro (el firmware actual la ignora).</div>
     </div>
+    <div class="card park-view">
+      <div class="row">
+        <h2>Estacionamiento 3D</h2>
+        <small id="parkViewStatus">Esperando datos de la placa</small>
+      </div>
+      <canvas id="parkView" width="900" height="470" role="img"
+              aria-label="Vista 3D del estacionamiento. El estado de las plazas y la barrera está indicado arriba."></canvas>
+      <small>Los autos entran y salen al cambiar la ocupación de cada plaza.</small>
+    </div>
     <div class="card">
       <div class="row"><strong>🔧 Tests (panel anterior)</strong></div>
       <div class="row" style="margin-top:8px;flex-wrap:wrap">
@@ -238,6 +251,7 @@
   </div>
 </main>
 
+<script src="./parking-view.js?v=3plazas"></script>
 <script>
 /* ================= Firebase (config del proyecto del amigo) ================= */
 const firebaseConfig = {
@@ -674,6 +688,7 @@ function conectarMqtt() {
     cli.subscribe([TOP_E, TOP_P, TOP_S, TOP_L]);
   });
   cli.on("close", () => {
+    window.ParkNetView?.disconnect();
     $("stMqtt").textContent = "reconectando…"; $("stMqtt").className = "warn";
     clearInterval(timerB);
     timerB = setTimeout(() => { idxB++; conectarMqtt(); }, 4000);
@@ -695,9 +710,16 @@ function conectarMqtt() {
         $("libres").textContent = d.libres + " / " + d.total + " libres";
         pinta("p1", (d.ocupadas[0]||0) === 1, "P1 (sensor)");
         pinta("p2", (d.ocupadas[1]||0) === 1, "P2 (web)");
+        if (d.ocupadas[2] === 0 || d.ocupadas[2] === 1) {
+          pinta("p3", d.ocupadas[2] === 1, "P3");
+        } else {
+          $("p3").textContent = "P3: sin datos";
+          $("p3").classList.remove("on");
+        }
         $("barrChip").textContent = "Barrera: " + d.barrera;
         $("barrChip").classList.toggle("on", d.barrera !== "CERRADA");
         logM("estado: " + s);
+        window.ParkNetView?.update(d);
       } catch(e) { logM("(ilegible) " + s); }
     }
   });

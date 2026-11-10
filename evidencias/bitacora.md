@@ -56,10 +56,17 @@ Registros de pruebas reales del sistema (die: 10-nov-2026, Preavance II de la pa
   en la red ajena a la que la placa se une como cliente. Sin broker, todo
   lo demás sigue igual.
 
-## 7. Pendientes (los asignados afuera)
+## 7. Estado del equipo (10-nov-2026, Preavance II)
 
-- [ ] Montaje físico con fuente externa (pila 9V + módulo buck a 5V) — pieza en camino
-- [ ] Pieza 3D / render 80-90% (equipo)
+Piezas del grupo correctamente entregadas:
+
+- [x] Pieza 3D / render al 80% (equipo)
+- [x] Estructura física estable + cableado ordenado (equipo)
+- [x] Tabla de pruebas obligatoria + informe (equipo)
+
+Pendientes restantes:
+
+- [ ] Montaje con fuente externa (pila 9V + módulo buck a 5V) — pieza en camino
 - [ ] Firebase (amigo 1) — consumir `iot/grupo1/estado`
 - [ ] Página cliente (amigo 2)
 - [ ] Capturas de: broker `-v` con mensajes, panel en el teléfono, pantalla LCD

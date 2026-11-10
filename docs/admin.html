@@ -173,6 +173,15 @@
         <span class="chip" id="tsTxt" style="border-style:dashed">sin señal</span>
       </div>
     </div>
+    <div class="card park-view">
+      <div class="row">
+        <h2>Estacionamiento 3D</h2>
+        <small id="parkViewStatus">Esperando datos de la placa</small>
+      </div>
+      <canvas id="parkView" width="900" height="470" role="img"
+              aria-label="Vista 3D del estacionamiento. El estado de las plazas y la barrera está indicado arriba."></canvas>
+      <small>Los autos entran y salen al cambiar la ocupación de cada plaza.</small>
+    </div>
     <div class="card">
       <div class="row">
         <button class="verde" id="bAbrir">▲ Abrir barrera</button>
@@ -208,15 +217,6 @@
       (bienvenida, hora de cierre, promociones…).</div>
       <div class="nota" style="margin-top:8px">La plaza 2 la controla la web (virtual). La plaza 3
       quedará lista para el tercer espacio futuro (el firmware actual la ignora).</div>
-    </div>
-    <div class="card park-view">
-      <div class="row">
-        <h2>Estacionamiento 3D</h2>
-        <small id="parkViewStatus">Esperando datos de la placa</small>
-      </div>
-      <canvas id="parkView" width="900" height="470" role="img"
-              aria-label="Vista 3D del estacionamiento. El estado de las plazas y la barrera está indicado arriba."></canvas>
-      <small>Los autos entran y salen al cambiar la ocupación de cada plaza.</small>
     </div>
     <div class="card">
       <div class="row"><strong>🔧 Tests (panel anterior)</strong></div>

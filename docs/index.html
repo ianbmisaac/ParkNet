@@ -230,6 +230,14 @@
     .login-prompt p, .config-warning { color: #c6d7d1; font-size: .75rem; line-height: 1.5; }
     .login-prompt p { margin: 0 0 10px; }
     .firebase-note { margin: 12px 0 0; color: var(--muted); font-size: .72rem; line-height: 1.5; }
+
+    /* estado en vivo del estacionamiento (MQTT) */
+    .live-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    .live-chip { display: inline-block; padding: 6px 12px; border: 1px solid var(--line);
+      border-radius: 999px; font-size: .74rem; font-weight: 700; color: var(--text); background: #0d191f; }
+    .live-chip.libre { border-color: #2f7d63; background: rgba(115,237,189,.12); color: var(--mint); }
+    .live-chip.occ { border-color: #8a3a3a; background: rgba(248,113,113,.12); color: #f8a09a; }
+    .live-chip.live-info { border-style: dashed; color: var(--muted); font-weight: 600; }
     .availability-list, .reservation-list { display: grid; gap: 8px; }
     .availability-item, .reservation-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid rgba(192,220,218,.1); border-radius: 11px; background: rgba(9,19,24,.55); }
     .availability-item strong, .reservation-details strong { font-size: .78rem; }
@@ -502,6 +510,16 @@
         <h2>Reserva tu espacio</h2>
         <p>Elige fecha, hora y lugar. Cada reserva ocupa un bloque de una hora.</p>
       </div>
+      <div class="booking-card" style="margin-bottom:14px" aria-label="Estado en vivo del estacionamiento">
+        <h3>Estado en vivo del estacionamiento</h3>
+        <div class="live-row">
+          <span class="live-chip" id="mqP1">Plaza 1 (sensor): conectando…</span>
+          <span class="live-chip" id="mqP2">Plaza 2 (web): conectando…</span>
+          <span class="live-chip live-info" id="mqBarr">Barrera: –</span>
+          <span class="live-chip live-info" id="mqLibres">– libres</span>
+        </div>
+        <p class="firebase-note" id="mqNota">Los datos llegan directo de la placa Arduino (MQTT), sin iniciar sesión.</p>
+      </div>
       <div class="booking-grid">
         <form class="booking-card" id="bookingForm">
           <h3>Detalles de la reserva</h3>
@@ -673,6 +691,7 @@
   <script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mqtt@5/dist/mqtt.min.js"></script>
   <script>
     (function () {
       "use strict";
@@ -1234,6 +1253,59 @@
       $("bookingForm").addEventListener("submit", createBooking);
       $("bookingDate").addEventListener("change", refreshAvailability);
       $("bookingTime").addEventListener("change", refreshAvailability);
+
+      /* ===== estado en vivo del estacionamiento (MQTT, sin login) =====
+         La placa publica iot/fixmol/estado (JSON) y plazas (numero). Cualquier
+         visitante lo ve: LIBRE u OCUPADA en tiempo real. */
+      var mqCli = null, mqIdx = 0, mqTimer = null;
+      var MQ_E = "iot/fixmol/estado", MQ_P = "iot/fixmol/plazas";
+      var MQ_BROKERS = ["wss://test.mosquitto.org:8081",
+                        "wss://broker.hivemq.com:8884/mqtt",
+                        "wss://broker.emqx.io:8084/mqtt"];
+      function mqChip(id, ocupada, base) {
+        var el = $(id);
+        if (!el) return;
+        el.textContent = base + ": " + (ocupada ? "OCUPADA" : "LIBRE");
+        el.className = "live-chip " + (ocupada ? "occ" : "libre");
+      }
+      function mqEstado(d) {
+        mqChip("mqP1", d.ocupadas && d.ocupadas[0] === 1, "Plaza 1 (sensor)");
+        mqChip("mqP2", d.ocupadas && d.ocupadas[1] === 1, "Plaza 2 (web)");
+        var b = $("mqBarr");
+        if (b) b.textContent = "Barrera: " + (d.barrera || "–");
+        var l = $("mqLibres");
+        if (l) l.textContent = (d.libres != null ? d.libres : "–") + " / " + (d.total || 2) + " libres";
+        var n = $("mqNota");
+        if (n) n.textContent = "Señal de la placa a las " + new Date().toLocaleTimeString() + " (MQTT).";
+      }
+      function mqConectar() {
+        if (typeof mqtt === "undefined") return;
+        if (mqIdx >= MQ_BROKERS.length) { mqIdx = 0; }
+        var url = MQ_BROKERS[mqIdx];
+        try { if (mqCli) mqCli.end(true); } catch (e) {}
+        mqCli = mqtt.connect(url, {
+          clientId: "web-parknet-" + Math.random().toString(16).slice(2, 8),
+          connectTimeout: 8000, reconnectPeriod: 0
+        });
+        mqCli.on("connect", function () {
+          clearInterval(mqTimer);
+          mqCli.subscribe([MQ_E, MQ_P]);
+        });
+        mqCli.on("close", function () {
+          clearInterval(mqTimer);
+          mqTimer = setTimeout(function () { mqIdx++; mqConectar(); }, 5000);
+        });
+        mqCli.on("error", function () { try { mqCli.end(true); } catch (e) {} });
+        mqCli.on("message", function (t, m) {
+          if (t === MQ_P) {
+            var q = parseInt(m.toString(), 10);
+            if (!isNaN(q) && $("mqLibres")) $("mqLibres").textContent = q + " / 2 libres";
+            return;
+          }
+          if (t === MQ_E) { try { mqEstado(JSON.parse(m.toString())); } catch (e) {} }
+        });
+      }
+      mqConectar();
       document.addEventListener("click", function (event) {
         var spot = event.target.closest && event.target.closest(".parking-spot");
         if (!configured || !spot) return;

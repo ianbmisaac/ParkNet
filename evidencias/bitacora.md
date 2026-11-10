@@ -89,3 +89,14 @@ Pendientes restantes:
   - Pendiente del compañero dueño de Firebase: publicar reglas en consola,
     crear doc `admins/{uid}`, dominio autorizado `ianbmisaac.github.io`
 - [ ] Capturas de: broker `-v` con mensajes, panel en el teléfono, pantalla LCD
+
+## 2026-11-10 - Correcciones tras feedback
+- Fuera la grilla de reserva (usuario no la queria): flujo clasico restaurado (commit fe785d2).
+- Causa 'Mostrar QR no hace nada': CDN qrcode@1.5.3/build/qrcode.min.js da 404. Fix: import dinamico via +esm; verificado en navegador (toCanvas definido).
+- Blindaje admin anti-URL: sin admins/{uid} se hace .remove() de tabsUI/secRes/secHW. Cada accion de hardware re-verifica rol con soyAdminAhora().
+- Pendiente usuario: diagnostico LED pin 12 (Luces:ON, intercambiar LEDs) y prueba QR con reserva NUEVA (las viejas no tienen pin).
+
+## 2026-11-10 - 'LED pin 12 apagado' no era falla
+- Firmware confirma: AUTO = ENCENDIDO LIBRE / APAGADO OCUPADA. Pin 12 = plaza 1 (con sensor IR), pin 10 = plaza 2 (virtual).
+- El LED 12 estaba apagado porque la plaza 1 estaba OCUPADA (sensor bloqueado). Comportamiento correcto.
+- Test de comprobar: Luces:ON prende los 3 LEDs (12, 8, 10) sin importar el sensor; volver a AUTO despues.

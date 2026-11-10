@@ -28,15 +28,22 @@
 // NOTE 192.168.137.1 = hotspot de Windows del PROPIO PC (para probar en
 // casa). El dia de la feria: la IP del PC del amigo que corra Mosquitto
 // (se ve con ipconfig en ese PC).
-const char* mqttServerPC = "192.168.137.1";
+// NIVEL 3 (desde cualquier lado): broker PUBLICO en internet. Menu:
+//   "test.mosquitto.org"  (gratis, sin cuenta; el mas usado en clases)
+//   "broker.hivemq.com"   (tambien gratis/sin cuenta)
+// Al ser publicos, los topics DEBEN ser unicos -> usamos "fixmol".
+const char* mqttServerPC = "test.mosquitto.org";
 // Cuando el Arduino solo tiene SU red propia "ParkNet" y el PC (con el
 // broker) se conecta a ella, el PC recibe 192.168.4.2 -> sin cambiar nada:
 const char* mqttServerAP = "192.168.4.2";
 const int   mqttPort     = 1883;
 const char* mqttID       = "parknet-fixmol";   // unico por grupos (usar otro)
-const char* TOP_SERVO  = "iot/grupo1/servo";   // <- comandos de barrera
-const char* TOP_PLAZAS = "iot/grupo1/plazas";  // <- plazas libres
-const char* TOP_ESTADO = "iot/grupo1/estado";  // <- estado completo
+// Topics fijos de Fixmol (unicos: valen tanto en broker privado del
+// grupo como en brokers publicos de internet). Cualquier dispositivo
+// suscrito a iot/fixmol/# ve todo el parqueadero.
+const char* TOP_SERVO  = "iot/fixmol/servo";    // <- comandos: ABRIR/CERRAR/RESERVAR
+const char* TOP_PLAZAS = "iot/fixmol/plazas";   // <- plazas libres (numero)
+const char* TOP_ESTADO = "iot/fixmol/estado";   // <- estado completo (JSON)
 // ====================================================================
 
 WiFiClient   mqttWifi;      // separado del del panel HTTP

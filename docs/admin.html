@@ -140,8 +140,11 @@
       quedará lista para el tercer espacio futuro (el firmware actual la ignora).</div>
     </div>
     <div class="card">
-      <div class="sub">Log</div>
-      <div id="log"></div>
+      <div class="row"><strong>Registro en vivo de la placa (logs)</strong>
+        <button id="bBorrarLog">limpiar</button></div>
+      <div id="log" style="max-height:220px"></div>
+      <small>Sensor IR, barrera, pantalla, comandos aceptados y rechazos de seguridad
+      — lo que pasa en el Arduino llega aquí al momento.</small>
     </div>
   </section>
 
@@ -333,13 +336,14 @@ const BROKERS = [
   "wss://broker.hivemq.com:8884/mqtt",
   "wss://broker.emqx.io:8084/mqtt"
 ];
-const TOP_E = "iot/fixmol/estado", TOP_P = "iot/fixmol/plazas", TOP_C = "iot/fixmol/comando";
+const TOP_E = "iot/fixmol/estado", TOP_P = "iot/fixmol/plazas", TOP_C = "iot/fixmol/comando",
+      TOP_S = "iot/fixmol/servo", TOP_L = "iot/fixmol/log";
 const TOKEN = "fixmol2026";
 let cli = null, idxB = 0, timerB = null;
 
 function logM(m) {
   $("log").textContent = (new Date().toLocaleTimeString() + "  " + m + "\n") +
-    $("log").textContent.split("\n").slice(0,12).join("\n");
+    $("log").textContent.split("\n").slice(0,40).join("\n");
 }
 function enviar(obj) {
   if (!cli || !cli.connected) { logM("sin broker, reintenta"); return; }
@@ -359,7 +363,7 @@ function conectarMqtt() {
     clearInterval(timerB);
     $("stMqtt").textContent = "conectado ✅"; $("stMqtt").className = "ok";
     logM("conectado a " + new URL(url).host);
-    cli.subscribe([TOP_E, TOP_P]);
+    cli.subscribe([TOP_E, TOP_P, TOP_S, TOP_L]);
   });
   cli.on("close", () => {
     $("stMqtt").textContent = "reconectando…"; $("stMqtt").className = "warn";
@@ -371,6 +375,8 @@ function conectarMqtt() {
     const s = msg.toString();
     $("tsTxt").textContent = "señal " + new Date().toLocaleTimeString();
     if (t === TOP_P) $("libres").textContent = s + " libres";
+    if (t === TOP_S) logM("servo ← " + s);
+    if (t === TOP_L) logM("Arduino → " + s);
     if (t === TOP_E) {
       try {
         const d = JSON.parse(s);
@@ -397,6 +403,7 @@ $("bD3").onclick = () => enviar({ cmd:"toggle", slot:3 });
 $("bLcd1").onclick = () => enviar({ cmd:"lcd", modo:"fixmol" });
 $("bLcd0").onclick = () => enviar({ cmd:"lcd", modo:"datos" });
 $("bSync").onclick = () => enviar({ cmd:"sync" });
+$("bBorrarLog").onclick = () => { $("log").textContent = ""; };
 
 /* ================= arranque ================= */
 $("dia").value = fechaStr(new Date());

@@ -116,3 +116,9 @@ Pendientes restantes:
 ## 2026-11-10 - Admin demo pepe123 activo + fix de la traba de comandos
 - Cuenta Auth creada: pepe123@fixmol.demo / clave Pepe1232026 (uid PFxJLKv9aGNgpB1NwWrE2JNIAYx2). Doc admins/pepe123@fixmol.demo creado por el usuario, rol OK.
 - Fix: soyAdminAhora() solo miraba admins/<uid>; con admin por correo cada comando era rechazado ('bloqueado'). Ahora acepta admins/<uid> O admins/<correo>. Commit d4d47a1, verificado publicado.
+
+## 2026-11-10 - Hardware: polaridad LEDs + pin real de la plaza 2
+- Ambos LEDs (pintados en protoboard) estan cableados al reves: ledAlReves={true,true} en parknet.ino compensa por software (lit=LOW).
+- El LED de la plaza 2 esta realmente en el pin 11, no el 10: pinLed={12,11}, LED_ROZ=11. Nota: el pin 10 queda en pinLed convertio solo en libre.
+- Firmware v4 compilado y subido por COM3. Boot: las 2 ?
+- Se recomienda asi quedo listo Fisico

@@ -79,4 +79,13 @@ Pendientes restantes:
   funcionaría igual, porque el firmware ya guarda ese nombre/clave)
 - [ ] Firebase (amigo 1) — consumir `iot/grupo1/estado`
 - [ ] Página cliente (amigo 2)
+- [x] Sistema usuario + admin completado (10-nov-2026):
+  - `docs/admin.html` publicada en Pages (login Firebase + rol `admins/{uid}` +
+    pestaña Reservas + pestaña Hardware)
+  - Firmware con topic `iot/fixmol/comando` que exige token `{"k":"fixmol2026"}`:
+    probado EN VIVO — comando sin token → RECHAZADO (pantalla no cambió);
+    comando con token → "token OK, ejecutando" (LCD pasó a `fixmol` en vivo)
+  - Reglas Firestore v2 con `isAdmin()` en `web-firebase/firestore.rules`
+  - Pendiente del compañero dueño de Firebase: publicar reglas en consola,
+    crear doc `admins/{uid}`, dominio autorizado `ianbmisaac.github.io`
 - [ ] Capturas de: broker `-v` con mensajes, panel en el teléfono, pantalla LCD

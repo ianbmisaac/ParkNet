@@ -122,3 +122,8 @@ Pendientes restantes:
 - El LED de la plaza 2 esta realmente en el pin 11, no el 10: pinLed={12,11}, LED_ROZ=11. Nota: el pin 10 queda en pinLed convertio solo en libre.
 - Firmware v4 compilado y subido por COM3. Boot: las 2 ?
 - Se recomienda asi quedo listo Fisico
+
+## 2026-11-10 - Visor 3D (parking-view) + fix doble inversion
+- Equipo agrego visor animado en admin.html (parking-view.js, commits 67acb50..482a4e7): autos que entran/ salen, barrera, P1 reacciona a los logs 'SENSOR:'. El modelo ve 3 plazas (P3 da 'sin datos' hasta que el firmware de 3 espacios).
+- Bug: el commit 'Corrige la polaridad de P1 en el panel' mantenia una inversion extra (1 - p1Reportada y parse 'LIBRE'->ocupada) que ya no venia a cuenta tras el firmware v4 (polaridad compensada en la placa). Resultado: el auto de P1 entraba cuando el sensor estaba LIBRE y salia cuando estaba obstruido.
+- Fix (7e74fb7): la placa reporta correcto y el panel ya no invierte. Publicado; el clone Documentos\GitHub\ParkNet del equipo debe hacer git pull.

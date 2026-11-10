@@ -268,6 +268,14 @@ const db = firebase.firestore();
 const $ = id => document.getElementById(id);
 
 let user = null, esAdmin = false, slotsViews = [], resView = null;
+
+/* === Visor 3D: reaccion del auto de P1 ===
+   TRUE  = el carro entra cuando el sensor esta OBSTRUIDO (plaza ocupada)
+   FALSE = el carro entra cuando el sensor esta despejado (si en tu
+           protoboard el modulo KY-033 termina Actuando inverso, gira esto;
+           solo cambia el visor 3D, nunca los chips de estado ni la alarma)
+   P2/P3 no se tocan: siguen el estado de la placa tal cual. */
+const P1_VISOR_INVERTIDO = true;
 // con que doc demonos el rol y cuando pasamos la ultima verificacion en vivo
 let adminDocTipo = "uid";        // "uid" | "correo"
 let adminVerificadoEn = 0;       // Date.now() del ultimo pase
@@ -709,7 +717,7 @@ function conectarMqtt() {
         // revez: aparecia cuando el sensor NO estaba obstruido).
         const ocupada = sensor[1] === "OCUPADA";
         pinta("p1", ocupada, "P1 (sensor)");
-        window.ParkNetView?.updateP1(ocupada);
+        window.ParkNetView?.updateP1(P1_VISOR_INVERTIDO ? !ocupada : ocupada);
         if (ocupada) alarmaLlegada(s);
         else $("alertaChip").style.display = "none";
       }
@@ -731,7 +739,11 @@ function conectarMqtt() {
         $("barrChip").textContent = "Barrera: " + d.barrera;
         $("barrChip").classList.toggle("on", d.barrera !== "CERRADA");
         logM("estado: " + s);
-        window.ParkNetView?.update(d);
+        const estado3d = { ...d };
+        if (P1_VISOR_INVERTIDO && estado3d.ocupadas?.[0] !== undefined) {
+          estado3d.ocupadas[0] = 1 - estado3d.ocupadas[0];   // solo el visor, P1
+        }
+        window.ParkNetView?.update(estado3d);
       } catch(e) { logM("(ilegible) " + s); }
     }
   });

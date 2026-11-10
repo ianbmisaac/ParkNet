@@ -258,8 +258,17 @@ auth.onAuthStateChanged(u => {
       salirVistas();
     }
   }).catch(e => {
-    $("rolTxt").textContent = "ROL: no se pudo verificar (¿reglas publicadas?)"; $("rolTxt").className = "warn";
+    const code = e && (e.code || e.message) ? (e.code || e.message) : "?";
+    $("rolTxt").textContent = "ROL: no se pudo verificar [" + code + "] — reintentando…";
+    $("rolTxt").className = "warn";
     $("ayudaAdmin").style.display = "";
+    // un solo reintento: si fue un corte de red momentaneo, se arregla solo
+    if (location.search.indexOf("r=1") === -1) {
+      setTimeout(() => { location.href = location.pathname + "?r=1"; }, 2500);
+    } else {
+      $("rolTxt").textContent = "ROL: no se pudo verificar [" + code +
+        "] — cierra sesión, entra con tu cuenta admin y pulsa F5. Si sigue, manda este código.";
+    }
   });
 });
 

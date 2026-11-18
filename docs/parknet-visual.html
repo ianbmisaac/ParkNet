@@ -196,7 +196,7 @@ const WIRES = [
   ["ky1","VCC","bb","bp.3","red"],
   ["ky1","GND","bb","bn.3","black"],
   ["ky1","OUT","bb","3t.f","gold"],
-  ["led1","A","bb","11t.f","gold"],
+  ["led1","A","bb","13t.f","gold"],
   ["led1","C","bb","bn.11","black"],
   ["uno","13","bb","3t.h","gold"],
   ["uno","12","bb","11t.h","gold"],
@@ -204,7 +204,7 @@ const WIRES = [
   ["ky2","VCC","bb","bp.6","red"],
   ["ky2","GND","bb","bn.7","black"],
   ["ky2","OUT","bb","6t.f","gold"],
-  ["led2","A","bb","26t.f","gold"],
+  ["led2","A","bb","28t.f","gold"],
   ["led2","C","bb","bn.25","black"],
   ["uno","6","bb","6t.h","gold"],
   ["uno","11","bb","26t.h","gold"],
@@ -212,7 +212,7 @@ const WIRES = [
   ["ky3","VCC","bb","bp.12","red"],
   ["ky3","GND","bb","bn.13","black"],
   ["ky3","OUT","bb","2t.f","gold"],
-  ["led3","A","bb","8t.f","gold"],
+  ["led3","A","bb","10t.f","gold"],
   ["led3","C","bb","bn.16","black"],
   ["uno","2","bb","2t.h","gold"],
   ["uno","8","bb","8t.h","gold"],
@@ -356,15 +356,24 @@ function drawLED(x, y, dome) {
   ctx.strokeStyle = dome.base; ctx.lineWidth = 1.6; ctx.stroke();
   ctx.fillStyle = "#ffffff88"; ctx.beginPath(); ctx.arc(x + 26, y + 14, 5, 0, 7); ctx.fill();
 }
-function drawResistor(x, yTop, yBot, label) {
-  ctx.strokeStyle = "#c9c9c2"; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(x + 6, yTop - 6); ctx.lineTo(x + 6, yBot); ctx.stroke();
-  rr(x, (yTop + yBot) / 2 - 18, 12, 34, 6, "#d8b97a", "#8a6d34", 1.4);
-  // bandas: rojo rojo marrón dorado = 220 ohm
-  const bands = ["#c0392b", "#c0392b", "#6e4f16", "#d4af37"];
-  bands.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(x + 1.5, (yTop + yBot) / 2 - 13 + i * 8, 9, 3.4); });
-  ctx.fillStyle = "#000"; ctx.font = "700 8.5px system-ui"; ctx.textAlign = "left";
-  ctx.fillText(label, x + 18, (yTop + yBot) / 2 + 3);
+// las tres resistencias 220 Ω enchufadas EN el protoboard, puenteando filas f
+function drawResistorsOnBoard() {
+  const defs = [
+    { xa: 11, xb: 13, name: "R1 220Ω" },
+    { xa: 26, xb: 28, name: "R2 220Ω" },
+    { xa:  8, xb: 10, name: "R3 220Ω" }
+  ];
+  const y = rowsB[0];                          // fila f (las 5 huecos f..j de la columna son un nodo)
+  defs.forEach(d => {
+    const x1 = colX(d.xa), x2 = colX(d.xb);
+    ctx.strokeStyle = "#c9c9c2"; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke();
+    rr((x1 + x2) / 2 - 24, y - 7, 48, 14, 6.5, "#d8b97a", "#8a6d34", 1.2);
+    const bands = ["#c0392b", "#c0392b", "#6e4f16", "#d4af37"];
+    bands.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect((x1 + x2) / 2 - 16 + i * 9, y - 5, 5, 10); });
+    ctx.fillStyle = "#333"; ctx.font = "700 9px system-ui"; ctx.textAlign = "center";
+    ctx.fillText(d.name, (x1 + x2) / 2, y - 12);
+  });
 }
 function drawParts() {
   // zona superior: pila, UNO #2 (regulador), servo, LCD
@@ -385,8 +394,6 @@ function drawParts() {
   SPOTS.forEach((s, i) => {
     drawKY(s.sensor.x, s.sensor.y);
     drawLED(s.led.x + 8, s.led.y + 20, LEDS[i]);
-    // resistencia 220Ω en serie con la pata ánodo del LED (físicamente en el camino)
-    drawResistor(s.led.x + 31, s.led.y - 22, s.led.y + 22, s.r);
   });
 
   // NOTAS
@@ -447,7 +454,7 @@ function drawWires() {
     ctx.fillText(w.label, cv.width / 2, 19.5); ctx.textBaseline = "alphabetic";
   }
 }
-function draw() { drawBoard(); drawParts(); drawWires(); }
+function draw() { drawBoard(); drawResistorsOnBoard(); drawParts(); drawWires(); }
 function distSeg(a, b, p) {
   const dx = b.x - a.x, dy = b.y - a.y;
   const l2 = dx * dx + dy * dy || 1;

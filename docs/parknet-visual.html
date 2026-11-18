@@ -356,15 +356,15 @@ function drawLED(x, y, dome) {
   ctx.strokeStyle = dome.base; ctx.lineWidth = 1.6; ctx.stroke();
   ctx.fillStyle = "#ffffff88"; ctx.beginPath(); ctx.arc(x + 26, y + 14, 5, 0, 7); ctx.fill();
 }
-function drawResistor(x, y, label) {
+function drawResistor(x, yTop, yBot, label) {
   ctx.strokeStyle = "#c9c9c2"; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 96, y); ctx.stroke();
-  rr(x + 22, y - 8, 52, 16, 7, "#d8b97a", "#8a6d34", 1.4);
-  // bandas: rojo rojo marrón dorado (220 ohm)
+  ctx.beginPath(); ctx.moveTo(x + 6, yTop - 6); ctx.lineTo(x + 6, yBot); ctx.stroke();
+  rr(x, (yTop + yBot) / 2 - 18, 12, 34, 6, "#d8b97a", "#8a6d34", 1.4);
+  // bandas: rojo rojo marrón dorado = 220 ohm
   const bands = ["#c0392b", "#c0392b", "#6e4f16", "#d4af37"];
-  bands.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(x + 29 + i * 11, y - 6, 6, 12); });
-  ctx.fillStyle = "#000"; ctx.font = "700 9px system-ui"; ctx.textAlign = "center";
-  ctx.fillText(label, x + 48, y + 20);
+  bands.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(x + 1.5, (yTop + yBot) / 2 - 13 + i * 8, 9, 3.4); });
+  ctx.fillStyle = "#000"; ctx.font = "700 8.5px system-ui"; ctx.textAlign = "left";
+  ctx.fillText(label, x + 18, (yTop + yBot) / 2 + 3);
 }
 function drawParts() {
   // zona superior: pila, UNO #2 (regulador), servo, LCD
@@ -385,7 +385,8 @@ function drawParts() {
   SPOTS.forEach((s, i) => {
     drawKY(s.sensor.x, s.sensor.y);
     drawLED(s.led.x + 8, s.led.y + 20, LEDS[i]);
-    drawResistor(s.led.x + 118, s.led.y + 32, s.r);
+    // resistencia 220Ω en serie con la pata ánodo del LED (físicamente en el camino)
+    drawResistor(s.led.x + 31, s.led.y - 22, s.led.y + 22, s.r);
   });
 
   // NOTAS

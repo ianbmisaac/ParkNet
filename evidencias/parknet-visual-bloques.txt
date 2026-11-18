@@ -1,0 +1,84 @@
+const COLORS = { red:"#d33a2c", black:"#20242c", orange:"#e8751a", gold:"#d4a017", green:"#3f9e4f", blue:"#2e7ad6" };
+// el color es el elemento string del arreglo de la conexion ("red","black",...)
+const colorName = c => {
+  if (!Array.isArray(c)) return "#888";
+  const s = c.find(x => typeof x === "string" && COLORS[x]);
+  return s ? COLORS[s] : "#888";
+};
+
+const canvas = document.getElementById("cv");
+canvas.width = 1180; canvas.height = 728;
+const ctx = canvas.getContext("2d");
+
+const BB = { x: 24, y: 148, w: 1132, h: 344, cols: 60 };
+const colX = c => BB.x + 34 + (c - 1) * ((BB.w - 68) / (BB.cols - 1));
+const railY = r => r === "tp" ? BB.y + 10 : BB.y + 42;
+const rowsA = [0,1,2,3,4].map(i => BB.y + 84 + i * 31);   // 232..356
+const rowsB = [0,1,2,3,4].map(i => BB.y + 244 + i * 22);   // 392..480
+const rowIndex = { a:0,b:1,c:2,d:3,e:4, f:0,g:1,h:2,i:3,j:4 };
+
+// partes: zonas ordenadas por regiones (fuente arriba, componentes abajo)
+const PARTS = {
+  fuente: { x: 44,  y: 16,  w: 118, h: 60, fill: "#c94f43", name: "PILA 9V" },
+  buck:   { x: 212, y: 16,  w: 158, h: 60, fill: "#1a1f27", name: "BUCK 9V->5V" },
+  servo1: { x: 972, y: 10,  w: 166, h: 72, fill: "#b8c3cd", name: "SERVO\nSG90" },
+  ky1:    { x: 398, y: 512, w: 116, h: 96, fill: "#4b86c5", name: "KY-033\nsensor P1" },
+  led1:   { x: 544, y: 512, w: 94,  h: 96, fill: "#5cc273", name: "LED 1\n(P1)" },
+  led2:   { x: 668, y: 512, w: 94,  h: 96, fill: "#5cc273", name: "LED 2\n(P2)" },
+  lcd:    { x: 806, y: 500, w: 180, h: 118, fill: "#3da65b", name: "LCD 1602\n(I2C)" }
+};
+const UNO = { x: 26, y: 502, w: 320, h: 212 };
+
+// posiciones relativas de los pines de cada componente (para anclar cables)
+const PIN_POS = {
+  "ky1:VCC": {dx:.3, dy:0, s:'t'}, "ky1:GND": {dx:.7, dy:0, s:'t'},
+  "ky1:OUT": {dx:1,  dy:.55, s:'r'},
+  "led1:A":  {dx:.35, dy:0, s:'t'}, "led1:C":  {dx:.65, dy:0, s:'t'},
+  "led2:A":  {dx:.35, dy:0, s:'t'}, "led2:C":  {dx:.65, dy:0, s:'t'},
+  "servo1:V+":  {dx:.28, dy:1, s:'b'}, "servo1:GND": {dx:.72, dy:1, s:'b'},
+  "servo1:PWM": {dx:.40, dy:0, s:'t'},
+  "lcd:VCC": {dx:.25, dy:0, s:'t'}, "lcd:GND": {dx:.75, dy:0, s:'t'},
+  "lcd:SDA": {dx:1,   dy:.35, s:'r'}, "lcd:SCL": {dx:1, dy:.65, s:'r'},
+  "fuente:+": {dx:1, dy:.3, s:'r'}, "fuente:-": {dx:1, dy:.7, s:'r'},
+  "buck:IN+": {dx:0, dy:.3, s:'l'}, "buck:IN-": {dx:0, dy:.7, s:'l'},
+  "buck:OUT+":{dx:1, dy:.3, s:'r'}, "buck:OUT-":{dx:1, dy:.7, s:'r'}
+};
+
+function pinAnchor(pin) {
+  const map = { "11": 0, "12": 1, "13": 2, "A0": 3, "A4": 4, "A5": 5, "GND.1": 6, "GND": 6 };
+  const i = map[pin] ?? 6;
+  return { x: UNO.x + UNO.w, y: UNO.y + 34 + i * 26, label: pin };
+}
+function gridHole(col, row) {
+  if (row === "tp") return { x: colX(col), y: railY("tp"), label: "TP" + col };
+  if (row === "tn") return { x: colX(col), y: railY("tn"), label: "TN" + col };
+  const r = rowIndex[row];
+  const arr = "abcde".includes(row) ? rowsA : rowsB;
+  return { x: colX(col), y: arr[r], label: col + row };
+}
+function partPin(key) {
+  const [id, pin] = key.split(":");
+  const r = PARTS[id], o = PIN_POS[key];
+  if (!r || !o) return { x: 0, y: 0, label: key };
+  let x, y;
+  if (o.s === 't')      { x = r.x + r.w * o.dx; y = r.y; }
+  else if (o.s === 'b') { x = r.x + r.w * o.dx; y = r.y + r.h; }
+  else if (o.s === 'r') { x = r.x + r.w;       y = r.y + r.h * o.dy; }
+  else                  { x = r.x;             y = r.y + r.h * o.dy; }
+  return { x, y, label: key };
+}
+function parseEnd(e) {
+  const id = e.replace(/^(uno|bb):/, "");
+  if (e.startsWith("uno:")) return pinAnchor(id);
+  const rail = id.match(/^(tp|tn)\.(\d+)$/);
+  if (rail) return gridHole(+rail[2], rail[1]);
+  const cell = id.match(/^(\d+)t\.([a-j])$/);
+  if (cell) return gridHole(+cell[1], cell[2]);
+  const cell2 = id.match(/^(\d+)\.([a-j])$/);
+  if (cell2) return gridHole(+cell2[1], cell2[2]);
+  return partPin(e);
+}
+
+const WIRES = DIAGRAM.connections.map((c, i) => {
+  return { i, a: parseEnd(c[0]), b: parseEnd(c[1]), color: colorName(c) };
+});

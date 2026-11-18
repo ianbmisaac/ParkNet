@@ -92,44 +92,56 @@ const DIAGRAM = {
     [ "uno:GND.1", "bb:tn.2", "black", [ "v-148.0", "h316.2", "v-22.7" ] ]]
 };
 
-const COLORS = { red:"#d33a2c", black:"#20242c", orange:"#e8751a", gold:"#d4a017", green:"#3f9e4f", blue:"#2e7ad6", white:"#f5f5f5", gray:"#7d8794" };
-const colorName = c => (typeof c==="string" && COLORS[c]) ? COLORS[c] : (typeof c==="string" ? c : "#888");
+const COLORS = { red:"#d33a2c", black:"#20242c", orange:"#e8751a", gold:"#d4a017", green:"#3f9e4f", blue:"#2e7ad6" };
+// el color es el elemento string del arreglo de la conexion ("red","black",...)
+const colorName = c => {
+  if (!Array.isArray(c)) return "#888";
+  const s = c.find(x => typeof x === "string" && COLORS[x]);
+  return s ? COLORS[s] : "#888";
+};
 
 const canvas = document.getElementById("cv");
+canvas.width = 1180; canvas.height = 728;
 const ctx = canvas.getContext("2d");
 
-const BB = { x: 60, y: 118, w: 1000, h: 262, cols: 60, railH: 16, rowHS: 26, gap: 12 };
-const colX = c => BB.x + 14 + (c - 1) * ((BB.w - 28) / (BB.cols - 1));
-const railY = r => BB.y + (r === "tp" ? 8 : 30);
-const rowsA = [0,1,2,3,4].map(i => BB.y + 52 + i * BB.rowHS);
-const rowsB = [0,1,2,3,4].map(i => BB.y + 158 + i * BB.rowHS);
+const BB = { x: 24, y: 148, w: 1132, h: 344, cols: 60 };
+const colX = c => BB.x + 34 + (c - 1) * ((BB.w - 68) / (BB.cols - 1));
+const railY = r => r === "tp" ? BB.y + 10 : BB.y + 42;
+const rowsA = [0,1,2,3,4].map(i => BB.y + 84 + i * 31);   // 232..356
+const rowsB = [0,1,2,3,4].map(i => BB.y + 244 + i * 22);   // 392..480
 const rowIndex = { a:0,b:1,c:2,d:3,e:4, f:0,g:1,h:2,i:3,j:4 };
 
-// partes: posiciones desde el diagram original (escala aproximada sobre nuestro lienzo)
-function partRect(id) {
-  const p = DIAGRAM.parts.find(p => p.id === id);
-  if (!p) return null;
-  // zona inferior (componentes) y superior (fuente)
-  const zones = {
-    fuente: { x: 90,  y: 6,   w: 108, h: 52, fill: "#c94f43", name: "PILA 9V" },
-    buck:   { x: 245, y: 6,   w: 132, h: 52, fill: "#1a1f27", name: "BUCK 9â†’5V" },
-    servo1: { x: 845, y: 6,   w: 150, h: 60, fill: "#b8c3cd", name: "SERVO SG90" },
-    ky1:    { x: 118, y: 444, w: 108, h: 74, fill: "#4b86c5", name: "KY-033\n(sensor P1)" },
-    led1:   { x: 320, y: 444, w: 84,  h: 74, fill: "#5cc273", name: "LED 1\n(P1)" },
-    led2:   { x: 462, y: 444, w: 84,  h: 74, fill: "#5cc273", name: "LED 2\n(P2)" },
-    lcd:    { x: 700, y: 444, w: 150, h: 88, fill: "#3da65b", name: "LCD 1602\n(I2C)" },
-    uno:    { x: 600, y: 444, w: 0, h: 0, fill: "none" } // se dibuja aparte
-  };
-  return { ...zones[p.id], p };
-}
+// partes: zonas ordenadas por regiones (fuente arriba, componentes abajo)
+const PARTS = {
+  fuente: { x: 44,  y: 16,  w: 118, h: 60, fill: "#c94f43", name: "PILA 9V" },
+  buck:   { x: 212, y: 16,  w: 158, h: 60, fill: "#1a1f27", name: "BUCK 9V->5V" },
+  servo1: { x: 972, y: 10,  w: 166, h: 72, fill: "#b8c3cd", name: "SERVO\nSG90" },
+  ky1:    { x: 398, y: 512, w: 116, h: 96, fill: "#4b86c5", name: "KY-033\nsensor P1" },
+  led1:   { x: 544, y: 512, w: 94,  h: 96, fill: "#5cc273", name: "LED 1\n(P1)" },
+  led2:   { x: 668, y: 512, w: 94,  h: 96, fill: "#5cc273", name: "LED 2\n(P2)" },
+  lcd:    { x: 806, y: 500, w: 180, h: 118, fill: "#3da65b", name: "LCD 1602\n(I2C)" }
+};
+const UNO = { x: 26, y: 502, w: 320, h: 212 };
 
-const UNO = { x: 40, y: 468, w: 330, h: 200 };
+// posiciones relativas de los pines de cada componente (para anclar cables)
+const PIN_POS = {
+  "ky1:VCC": {dx:.3, dy:0, s:'t'}, "ky1:GND": {dx:.7, dy:0, s:'t'},
+  "ky1:OUT": {dx:1,  dy:.55, s:'r'},
+  "led1:A":  {dx:.35, dy:0, s:'t'}, "led1:C":  {dx:.65, dy:0, s:'t'},
+  "led2:A":  {dx:.35, dy:0, s:'t'}, "led2:C":  {dx:.65, dy:0, s:'t'},
+  "servo1:V+":  {dx:.28, dy:1, s:'b'}, "servo1:GND": {dx:.72, dy:1, s:'b'},
+  "servo1:PWM": {dx:.40, dy:0, s:'t'},
+  "lcd:VCC": {dx:.25, dy:0, s:'t'}, "lcd:GND": {dx:.75, dy:0, s:'t'},
+  "lcd:SDA": {dx:1,   dy:.35, s:'r'}, "lcd:SCL": {dx:1, dy:.65, s:'r'},
+  "fuente:+": {dx:1, dy:.3, s:'r'}, "fuente:-": {dx:1, dy:.7, s:'r'},
+  "buck:IN+": {dx:0, dy:.3, s:'l'}, "buck:IN-": {dx:0, dy:.7, s:'l'},
+  "buck:OUT+":{dx:1, dy:.3, s:'r'}, "buck:OUT-":{dx:1, dy:.7, s:'r'}
+};
 
 function pinAnchor(pin) {
-  // pines del UNO en su borde superior derecho/izquierdo
   const map = { "11": 0, "12": 1, "13": 2, "A0": 3, "A4": 4, "A5": 5, "GND.1": 6, "GND": 6 };
-  const i = map[pin] ?? 3;
-  return { x: UNO.x + UNO.w - 14, y: UNO.y + 24 + i * 26, label: pin };
+  const i = map[pin] ?? 6;
+  return { x: UNO.x + UNO.w, y: UNO.y + 34 + i * 26, label: pin };
 }
 function gridHole(col, row) {
   if (row === "tp") return { x: colX(col), y: railY("tp"), label: "TP" + col };
@@ -138,47 +150,54 @@ function gridHole(col, row) {
   const arr = "abcde".includes(row) ? rowsA : rowsB;
   return { x: colX(col), y: arr[r], label: col + row };
 }
+function partPin(key) {
+  const [id, pin] = key.split(":");
+  const r = PARTS[id], o = PIN_POS[key];
+  if (!r || !o) return { x: 0, y: 0, label: key };
+  let x, y;
+  if (o.s === 't')      { x = r.x + r.w * o.dx; y = r.y; }
+  else if (o.s === 'b') { x = r.x + r.w * o.dx; y = r.y + r.h; }
+  else if (o.s === 'r') { x = r.x + r.w;       y = r.y + r.h * o.dy; }
+  else                  { x = r.x;             y = r.y + r.h * o.dy; }
+  return { x, y, label: key };
+}
 function parseEnd(e) {
-  const [from, id] = e.split(":");
-  if (from === "uno") return pinAnchor(id);
-  // bb:tp.39 | bb:tn.4 | bb:2t.a
+  const id = e.replace(/^(uno|bb):/, "");
+  if (e.startsWith("uno:")) return pinAnchor(id);
   const rail = id.match(/^(tp|tn)\.(\d+)$/);
   if (rail) return gridHole(+rail[2], rail[1]);
   const cell = id.match(/^(\d+)t\.([a-j])$/);
   if (cell) return gridHole(+cell[1], cell[2]);
   const cell2 = id.match(/^(\d+)\.([a-j])$/);
   if (cell2) return gridHole(+cell2[1], cell2[2]);
-  return { x: 0, y: 0, label: e };
+  return partPin(e);
 }
 
 const WIRES = DIAGRAM.connections.map((c, i) => {
-  const [a, b, color] = c;
-  return { i, a: parseEnd(a), b: parseEnd(b), color: colorName(c[c.length - 1]) };
+  return { i, a: parseEnd(c[0]), b: parseEnd(c[1]), color: colorName(c) };
 });
-
-let sel = -1;
-
 function drawBreadboard() {
   ctx.fillStyle = "#f2ecdd"; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#e6decb"; ctx.strokeStyle = "#c8bda1"; ctx.lineWidth = 1.4;
   rr(BB.x - 8, BB.y - 8, BB.w + 16, BB.h + 16, 16, true);
-  // rieles
+  // rieles (+/-)
   for (const r of ["tp", "tn"]) {
     ctx.fillStyle = r === "tp" ? "#d8542e" : "#37414f";
-    ctx.fillRect(BB.x + 4, railY(r) - 11, BB.w - 8, 22);
-    ctx.fillStyle = "#fff"; ctx.font = "700 11px system-ui";
-    ctx.textAlign = "left"; ctx.fillText(r === "tp" ? "+5V" : "GND", BB.x + 6, railY(r) + 4);
-    for (let c = 1; c <= BB.cols; c++) hole(colX(c), railY(r), 3.4, "#0002");
+    ctx.fillRect(BB.x + 4, railY(r) - 10, BB.w - 8, 20);
+    ctx.fillStyle = "#fff"; ctx.font = "700 11px system-ui"; ctx.textAlign = "left";
+    ctx.fillText(r === "tp" ? "+5V" : "GND", BB.x + 8, railY(r) + 4);
+    for (let c = 1; c <= BB.cols; c++) hole(colX(c), railY(r), 3.6, "#0003");
   }
-  // huecos fila a..j
+  // huecos a..e y f..j
   for (const arr of [rowsA, rowsB])
-    for (const y of arr) for (let c = 1; c <= BB.cols; c++) hole(colX(c), y, 4.6, "#0003");
-  ctx.fillStyle = "#b3a888"; ctx.fillRect(BB.x + 4, BB.y + 137, BB.w - 8, 6); // separador central
-  // nÃºmeros de columna cada 5
-  ctx.fillStyle = "#8d8165"; ctx.font = "10px system-ui"; ctx.textAlign = "center";
-  for (let c = 5; c <= BB.cols; c += 5) { const y = BB.y + BB.h - 4; ctx.fillText(String(c), colX(c), y + 12); }
+    for (const y of arr) for (let c = 1; c <= BB.cols; c++) hole(colX(c), y, 5.0, "#0003");
+  // separador entre a-e y f-j
+  ctx.fillStyle = "#b3a888"; ctx.fillRect(BB.x + 4, BB.y + 211, BB.w - 8, 5);
+  // números de columna cada 5
+  ctx.fillStyle = "#8d8165"; ctx.font = "11px system-ui"; ctx.textAlign = "center";
+  for (let c = 5; c <= BB.cols; c += 5) ctx.fillText(String(c), colX(c), BB.y + BB.h - 4);
   // letras de fila
-  ctx.textAlign = "right"; ctx.font = "700 11px system-ui"; ctx.fillStyle = "#8d8165";
+  ctx.fillStyle = "#8d8165"; ctx.font = "700 12px system-ui"; ctx.textAlign = "right";
   "abcde".split("").forEach((l, i) => ctx.fillText(l, BB.x - 2, rowsA[i] + 4));
   "fghij".split("").forEach((l, i) => ctx.fillText(l, BB.x - 2, rowsB[i] + 4));
 }
@@ -188,22 +207,19 @@ function hole(x, y, r, color) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2
 function drawParts() {
   // UNO
   ctx.fillStyle = "#0f5f6b"; ctx.strokeStyle = "#084049"; rr(UNO.x, UNO.y, UNO.w, UNO.h, 12, true);
-  ctx.fillStyle = "#7ef0ff"; ctx.font = "700 13px system-ui"; ctx.textAlign = "left";
-  ctx.fillText("ARDUINO UNO R4 WiFi", UNO.x + 18, UNO.y + 22);
-  ctx.fillStyle = "#bff3ff"; ctx.font = "11px system-ui";
-  ["pines usados:", ...["13 â†’ KY-033 OUT","12 â†’ LED 1  (P1)","11 â†’ LED 2  (P2)","A0 â†’ seÃ±al SERVO","A4 â†’ LCD SDA","A5 â†’ LCD SCL","GND â†’ riel comÃºn"]].forEach((t, i) =>
-    ctx.fillText(t, UNO.x + 18, UNO.y + 44 + i * 21));
-  ctx.fillStyle = "#f5e6a8"; ctx.fillText("NUNCA: 5V del Arduino â†’ servo", UNO.x + 18, UNO.y + UNO.h - 12);
+  ctx.fillStyle = "#7ef0ff"; ctx.font = "700 15px system-ui"; ctx.textAlign = "left";
+  ctx.fillText("ARDUINO UNO R4 WiFi", UNO.x + 18, UNO.y + 26);
+  ctx.fillStyle = "#bff3ff"; ctx.font = "12px system-ui";
+  ["pines usados:", "13 -> KY-033 OUT","12 -> LED 1  (P1)","11 -> LED 2  (P2)","A0 -> senal SERVO","A4 -> LCD SDA","A5 -> LCD SCL","GND -> riel comun"].forEach((t, i) =>
+    ctx.fillText(t, UNO.x + 18, UNO.y + 52 + i * 20));
+  ctx.fillStyle = "#f5e6a8"; ctx.fillText("NUNCA: 5V del Arduino -> servo", UNO.x + 18, UNO.y + UNO.h - 14);
 
-  for (const p of DIAGRAM.parts) {
-    const r = partRect(p.id);
-    if (!r || !r.w) continue;
+  for (const [id, r] of Object.entries(PARTS)) {
     ctx.fillStyle = r.fill; ctx.strokeStyle = "#00000033"; rr(r.x, r.y, r.w, r.h, 10, true);
-    ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "700 11px system-ui";
-    r.name.split("\n").forEach((t, i) => ctx.fillText(t, r.x + r.w / 2, r.y + r.h / 2 - 3 + i * 15));
+    ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "700 12px system-ui";
+    r.name.split("\n").forEach((t, i) => ctx.fillText(t, r.x + r.w / 2, r.y + r.h / 2 - 2 + i * 17));
   }
 }
-
 function drawWires() {
   ctx.lineWidth = 3.2; ctx.lineCap = "round"; ctx.lineJoin = "round";
   for (const w of WIRES) {
@@ -245,7 +261,7 @@ function select(i) {
   document.querySelectorAll(".chip").forEach(c => c.classList.toggle("on", +c.dataset.i === i));
   draw();
 }
-function draw() { drawBreadboard(); drawWires(); drawParts(); }
+function draw() { drawBreadboard(); drawParts(); drawWires(); }
 draw();
 buildLegend();
 </script>

@@ -2,281 +2,323 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>ParkNet â€” protoboard real 830 puntos</title>
+<title>ParkNet — protoboard 830 pts, montaje completo (3 plazas)</title>
 <style>
   :root { --bg:#0a1420; --panel:#101f2b; --ink:#dce9f2; --mut:#7e94a8; --acc:#38bdf8; --acc2:#ffd23f; }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--ink); font-family:"Segoe UI",system-ui,sans-serif; }
-  header { display:flex; align-items:baseline; gap:18px; padding:12px 22px 6px; flex-wrap:wrap; }
-  h1 { font-size:1.02rem; margin:0; color:#fff; }
+  header { padding:12px 22px 8px; display:flex; gap:16px; align-items:baseline; flex-wrap:wrap; }
+  h1 { font-size:1rem; margin:0; color:#fff; }
   header span { color:var(--mut); font-size:.8rem; }
-  main { display:grid; grid-template-columns:minmax(420px,1fr) 340px; gap:14px; padding:0 22px 20px; }
-  @media (max-width:1000px) { main { grid-template-columns:1fr; } }
-  #stage { background:#141a22; border-radius:14px; border:1px solid #2a3d4d; overflow:hidden; display:flex; justify-content:center; align-items:center; }
-  canvas { display:block; width:100%; height:auto; }
+  main { display:grid; grid-template-columns:minmax(460px,1fr) 370px; gap:14px; padding:0 22px 20px; }
+  @media (max-width:1100px) { main { grid-template-columns:1fr; } }
+  #stage { background:#131a24; border-radius:14px; border:1px solid #2a3d4d; overflow:auto; padding:10px; }
+  canvas { display:block; background:#f2ecdd; border-radius:10px; }
   aside { background:var(--panel); border-radius:14px; padding:14px; max-height:100%; overflow:auto; }
-  aside h2 { font-size:.8rem; letter-spacing:.06em; text-transform:uppercase; color:var(--mut); margin:2px 0 10px; }
-  .chip { display:inline-block; border:1px solid #274055; border-radius:999px; padding:2px 9px; font-size:.72rem; color:var(--acc); margin:2px 4px 6px 0; cursor:pointer; user-select:none; }
-  .chip.on { background:#123; border-color:var(--acc); }
-  ol#lista { margin:0; padding-left:1.2rem; font-size:.82rem; color:#c9d6df; }
-  ol#lista li { padding:3px 6px; border-radius:6px; border-left:4px solid transparent; cursor:pointer; line-height:1.45; }
-  ol#lista li:hover { background:#16222d; }
-  ol#lista li.on { background:#132533; border-left-color:var(--acc2); color:#fff; }
-  ol#lista code { color:var(--acc2); }
-  footer { padding:8px 22px 18px; color:var(--mut); font-size:.72rem; }
+  aside h2 { font-size:.78rem; letter-spacing:.06em; text-transform:uppercase; color:var(--mut); margin:2px 0 10px; }
+  aside h3 { font-size:.74rem; color:var(--acc); margin:12px 0 6px; letter-spacing:.05em; }
+  ol { font-size:.78rem; color:#c9d6df; }
+  ol li { padding:2px 6px; border-radius:6px; line-height:1.5; }
+  ol li:hover { background:#16222d; }
+  code { color:var(--acc2); }
+  .note { font-size:.74rem; color:var(--mut); border-left:3px solid #274055; padding:6px 10px; margin-top:10px; line-height:1.5; }
 </style>
 </head>
 <body>
 <header>
-  <h1>ParkNet â€” protoboard real (830 puntos, doble lado)</h1>
-  <span>Pila 9V â†’ BUCK â†’ rail rojo superior +5V Â· rail azul inferior GND Â· GND comÃºn al Arduino</span>
+  <h1>ParkNet — Tablero de la feria (3 plazas, 3 sensores KY-033, 3 LEDs + resistencias)</h1>
+  <span>El cableado es fiel a la placa: 3 sensores en D13/D6/D2 y 3 LEDs en D12/D11/D8. El 3er sensor y el 3er LED son el «futuro P3» — todavía no están cableados al firmware.</span>
 </header>
 <main>
-  <div id="stage"><canvas id="cv" width="1246" height="776" role="img" aria-label="DisposiciÃ³n del protoboard"></canvas></div>
+  <div id="stage"><canvas id="cv" width="1420" height="848" role="img" aria-label="Montaje completo del protoboard"></canvas></div>
   <aside>
-    <h2>Cableado (clic para resaltar en el mapa)</h2>
-    <div id="chips"></div>
+    <h2>Lista maestra de cables</h2>
+    <h3>Energía</h3>
     <ol id="lista"></ol>
+    <h3>Datos de los pines</h3>
+    <ol id="lista2"></ol>
+    <div class="note">Resistencias: 220 Ω en serie con el ánodo de cada LED (banda roja-roja-marrón-dorado). El servo no toca el 5V del Arduino: se alimenta del rail rojo que viene de la pila (9V→BUCK→5V). GND común SIEMPRE: rail azul = GND de pila + GND de UNO + GND de servo.</div>
   </aside>
 </main>
-<footer>Mismo diagrama de Tinker que tu carpeta <code>Downloads\wokwi\diagram.json</code>. Los LEDs en fÃ­sico llevan resistencia 220â€“470 Î© en serie.</footer>
 <script>
-const DIAGRAM = {
-  "version": 1,
-  "author": "Equipo Fixmol",
-  "editor": "wokwi",
-  "parts": [{ "type": "wokwi-breadboard", "id": "bb", "top": 340.0, "left": 400, "attrs": {} },
-    { "type": "wokwi-text", "id": "lblBB", "top": 310.0, "left": 390, "attrs": { "text": "PROTOBOARD LARGA  (+5V arriba / GND abajo)" } },
-    { "type": "wokwi-arduino-uno", "id": "uno", "top": 520.0, "left": 30, "attrs": {} },
-    { "type": "wokwi-text", "id": "lblUno", "top": 484.0, "left": 20, "attrs": { "text": "ARDUINO UNO R4 WiFi" } },
-    { "type": "wokwi-pir-motion-sensor", "id": "ky1", "top": 208.0, "left": 396, "attrs": { "delayTime": "5" } },
-    { "type": "wokwi-text", "id": "lbl_ky1", "top": 178.0, "left": 396, "attrs": { "text": "KY-033" } },
-    { "type": "wokwi-led", "id": "led1", "top": 258.0, "left": 493, "attrs": { "color": "green" } },
-    { "type": "wokwi-text", "id": "lbl_led1", "top": 228.0, "left": 493, "attrs": { "text": "LED 1" } },
-    { "type": "wokwi-led", "id": "led2", "top": 258.0, "left": 637, "attrs": { "color": "green" } },
-    { "type": "wokwi-text", "id": "lbl_led2", "top": 228.0, "left": 637, "attrs": { "text": "LED 2" } },
-    { "type": "wokwi-servo", "id": "servo1", "top": 31.0, "left": 873, "attrs": { "horn": "single" } },
-    { "type": "wokwi-text", "id": "lbl_servo1", "top": 2.0, "left": 873, "attrs": { "text": "SERVO" } },
-    { "type": "wokwi-lcd1602", "id": "lcd", "top": 200.0, "left": 900, "attrs": { "pins": "i2c", "i2cAddress": "0x27", "color": "white", "background": "green" } },
-    { "type": "wokwi-text", "id": "lbl_lcd", "top": 170.0, "left": 900, "attrs": { "text": "PANTALLA LCD 1602 (I2C)" } },
-    { "type": "wokwi-9v", "id": "fuente", "top": 26.0, "left": 600, "attrs": { "name": "9V" } },
-    { "type": "wokwi-text", "id": "lbl_fuente", "top": -4.0, "left": 560, "attrs": { "text": "PILA 9 V (cuadrada)" } },
-    { "type": "wokwi-custom-chip", "id": "buck", "top": 12.0, "left": 690, "attrs": { "name": "BUCK 9V->5V", "pins": "IN+:left.0,IN-:left.1,OUT+:right.0,OUT-:right.1", "pinLabels": { "IN+": "+9V", "IN-": "0V", "OUT+": "+5V", "OUT-": "GND" } }, "children": [ { "type": "rect", "props": { "x": 6, "y": 6, "width": 72, "height": 56, "rx": 4, "fill": "#111111", "stroke": "#999999", "strokeWidth": 1.5 } }, { "type": "text", "props": { "x": 42, "y": 30, "fontSize": 11, "fill": "#ffffff", "textAnchor": "middle", "text": "BUCK" } }, { "type": "text", "props": { "x": 42, "y": 50, "fontSize": 10, "fill": "#fdd835", "textAnchor": "middle", "text": "9V a 5V" } } ] },
-    { "type": "wokwi-text", "id": "lbl_buck", "top": -16.0, "left": 690, "attrs": { "text": "REDUCTOR BUCK 9V -> 5V (ajustar a 5.0 V)" } },
-    { "type": "wokwi-text", "id": "lblTabla", "top": 735.0, "left": 30, "attrs": { "text": "CONEXIONES COMPLETAS\n  plaza 1   sensor KY-033 OUT -> pin 13  (col 2)  |  LED 1 -> pin 12  (col 11)\n  plaza 2   (virtual, se simula desde la web)      |  LED 2 -> pin 11  (col 26)\n\n  SERVO      senal PWM -> pin A0 (col 48)  |  +5V al rail rojo  |  GND al rail negro\n  PANTALLA   LCD 1602 con conversor I2C:\n             SDA -> pin A4 (col 55)  |  SCL -> pin A5 (col 56)  |  +5V y GND a los rails\n\n  SENSORES   VCC al rail rojo (+5V)  |  GND al rail negro  |  OUT al pin del Arduino\n  LEDS       anodo al pin del Arduino (con resistencia 330-470 ohm)  |  catodo al rail negro\n\n  PILA       9 V (cuadrada) -> BUCK ajustado a 5.0 V -> rail rojo/azul (col 39)\n  PROHIBIDO: conectar la pila de 9 V directo al circuito (mata LCD y sensor).\n  IMPORTANTE: el rÃƒÂ¡il rojo lo alimenta la FUENTE EXTERNA (5 V), no el Arduino.\n  El Arduino sÃƒÂ³lo lleva su GND al rÃƒÂ¡il azul (masa comÃƒÂºn). Su pin 5V va libre.\n  AsÃƒÂ­ el servo no tira del USB de la placa y no hay caidas de tensiÃƒÂ³n." } }],
-  "connections": [[ "ky1:VCC", "bb:tp.2", "red", [ "v48.4" ] ],
-    [ "ky1:GND", "bb:tn.4", "black", [ "h-0.3", "v58.3" ] ],
-    [ "ky1:OUT", "bb:2t.a", "gold", [ "h-9.7", "v87.2" ] ],
-    [ "led1:C", "bb:tn.10", "black", [ "h0.4", "v58.3" ] ],
-    [ "led1:A", "bb:11t.a", "gold", [ "v87.2" ] ],
-    [ "led2:C", "bb:tn.25", "black", [ "h0.4", "v58.3" ] ],
-    [ "led2:A", "bb:26t.a", "gold", [ "v87.2" ] ],
-    [ "servo1:V+", "bb:tp.49", "red", [ "h9.6", "v286.4" ] ],
-    [ "servo1:GND", "bb:tn.50", "black", [ "h19.2", "v277.3" ] ],
-    [ "servo1:PWM", "bb:48t.a", "orange", [ "v287.2" ] ],
-    [ "lcd:VCC", "bb:tp.50", "red", [ "*", "h0" ] ],
-    [ "lcd:GND", "bb:tn.50", "black", [ "*", "h0" ] ],
-    [ "lcd:SDA", "bb:55t.a", "green", [ "*", "h0" ] ],
-    [ "lcd:SCL", "bb:56t.a", "blue", [ "*", "h0" ] ],
-    [ "uno:A4", "bb:55t.d", "green", [ "v-36.0", "h693.9", "v-259.7" ] ],
-    [ "uno:A5", "bb:56t.d", "blue", [ "v-24.0", "h694.0", "v-271.7" ] ],
-    [ "uno:13", "bb:2t.a", "gold", [ "v-133.0", "h306.7", "v-8.8" ] ],
-    [ "uno:12", "bb:11t.a", "gold", [ "v-116.0", "h383.5", "v-25.8" ] ],
-    [ "uno:11", "bb:26t.a", "gold", [ "v-99.0", "h508.3", "v-42.8" ] ],
-    [ "uno:A0", "bb:48t.c", "orange", [ "v-48.0", "h664.8", "v-257.2" ] ],
-    [ "fuente:+", "buck:IN+", "red", [ "*", "h0" ] ],
-    [ "fuente:-", "buck:IN-", "black", [ "*", "h0" ] ],
-    [ "buck:OUT+", "bb:tp.39", "red", [ "h-1.5", "v322.4" ] ],
-    [ "buck:OUT-", "bb:tn.39", "black", [ "h17.0", "v304.0", "h-13.5", "v6.3" ] ],
-    [ "uno:GND.1", "bb:tn.2", "black", [ "v-148.0", "h316.2", "v-22.7" ] ]]
-};
-const COLORS = { red:"#d33a2c", black:"#20242c", orange:"#e8751a", gold:"#d4a017", green:"#3f9e4f", blue:"#2e7ad6" };
-const colorName = c => { const s = (Array.isArray(c) ? c : [c]).find(x => typeof x === "string"); return COLORS[s] || "#888"; };
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
 
-const canvas = document.getElementById("cv");
-const ctx = canvas.getContext("2d");
-
-// ===== geometrÃ­a del protoboard real =====
-const BOARD = { x: 24, y: 104, w: 1198, h: 428, r: 22 };
+// ===== geometría =====
+const BOARD = { x: 24, y: 96, w: 1372, h: 418, r: 20 };
 const NCOLS = 60;
-const colX = c => 92 + (c - 1) * 17.9;
-// rails: 2 arriba, 2 abajo (riel rojo + riel azul en cada lado)
-const RAIL = { tp: 116, tn: 150, bp: 468, bn: 502 };
-// grid rows a-e / f-j
-const rowsA = [0,1,2,3,4].map(i => 186 + i * 30);
-const rowsB = [0,1,2,3,4].map(i => 348 + i * 26);
-const dy = (arr, i) => arr[i];
+const colX = c => 88 + (c - 1) * 21.9;             // 88..1384 dentro del tablero
+const RAIL = { tp: 110, tn: 146, bp: 452, bn: 488 };  // centros y de los rieles
+const rowsA = [0,1,2,3,4].map(i => 188 + i * 30);     // 188..308
+const rowsB = [0,1,2,3,4].map(i => 348 + i * 26);     // 348..452
 const rowIndex = { a:0,b:1,c:2,d:3,e:4, f:0,g:1,h:2,i:3,j:4 };
 
-function rr(x, y, w, h, r, fill, stroke, lw=1.5) {
+function rr(x, y, w, h, r, fill, stroke, lw) {
   ctx.beginPath(); ctx.roundRect(x, y, w, h, r);
-  ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke();
+  ctx.fillStyle = fill; ctx.fill();
+  if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw || 1.4; ctx.stroke(); }
 }
-function hole(x, y, r) {
-  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = "#b9b6ad"; ctx.fill();
-  ctx.beginPath(); ctx.arc(x, y, r - 1.4, 0, 7); ctx.fillStyle = "#2b2b26"; ctx.fill();
+function hole(x, y) {
+  ctx.beginPath(); ctx.arc(x, y, 3.0, 0, 7); ctx.fillStyle = "#b7b4aa"; ctx.fill();
+  ctx.beginPath(); ctx.arc(x, y, 1.8, 0, 7); ctx.fillStyle = "#2b2b26"; ctx.fill();
 }
-function railStrip(x, y, w, tint, plus, label) {
-  rr(x, y, w, 20, 4, "#fbe9d8", "#c5c2b8", 1);
-  ctx.fillStyle = tint; ctx.fillRect(x + 2, y + 10, w - 4, 7);
+function railStrip(x, y, w, tint, label) {
+  rr(x, y - 9, w, 18, 4, "#fde8d8", "#cfcabf", 1);
+  ctx.fillStyle = tint; ctx.fillRect(x + 3, y + 2, w - 6, 4);
   ctx.fillStyle = tint; ctx.font = "700 10px system-ui"; ctx.textAlign = "left";
-  ctx.fillText(label, x + 6, y + 9);
+  ctx.fillText(label, x + 6, y - 1);
 }
 function drawBoard() {
-  // sombra del cuerpo
-  ctx.fillStyle = "#00000055"; rr(BOARD.x + 6, BOARD.y + 10, BOARD.w, BOARD.h, BOARD.r, "#00000044", "transparent");
-  // cuerpo blanco del protoboard
+  ctx.fillStyle = "#f2ecdd"; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = "#0006"; rr(BOARD.x + 6, BOARD.y + 10, BOARD.w, BOARD.h, BOARD.r, "#00000050", null);
   const g = ctx.createLinearGradient(0, BOARD.y, 0, BOARD.y + BOARD.h);
-  g.addColorStop(0, "#ffffff"); g.addColorStop(.5, "#f4f4ef"); g.addColorStop(1, "#e7e7e0");
+  g.addColorStop(0, "#ffffff"); g.addColorStop(.5, "#f4f4ef"); g.addColorStop(1, "#e9e9e2");
   rr(BOARD.x, BOARD.y, BOARD.w, BOARD.h, BOARD.r, g, "#c9c9c2", 1.5);
-  // rieles (rojo arriba y abajo, azul arriba y abajo) â€” cortes en el centro (col 30/31)
-  railStrip(BOARD.x + 10, RAIL.tp - 10, (BOARD.w / 2) - 16, "#e2571e", true, "+5V");
-  railStrip(BOARD.x + BOARD.w / 2 + 6, RAIL.tp - 10, (BOARD.w / 2) - 16, "#e2571e", true, "+5V");
-  railStrip(BOARD.x + 10, RAIL.tn - 10, (BOARD.w / 2) - 16, "#2e7ad6", false, "-");
-  railStrip(BOARD.x + BOARD.w / 2 + 6, RAIL.tn - 10, (BOARD.w / 2) - 16, "#2e7ad6", false, "-");
-  railStrip(BOARD.x + 10, RAIL.bn - 10, (BOARD.w / 2) - 16, "#e2571e", true, "+5V");
-  railStrip(BOARD.x + BOARD.w / 2 + 6, RAIL.bn - 10, (BOARD.w / 2) - 16, "#e2571e", true, "+5V");
-  railStrip(BOARD.x + 10, RAIL.bp - 10, (BOARD.w / 2) - 16, "#2e7ad6", false, "-");
-  railStrip(BOARD.x + BOARD.w / 2 + 6, RAIL.bp - 10, (BOARD.w / 2) - 16, "#2e7ad6", false, "-");
-  // huecos de rieles
+  // rieles (2 arriba + 2 abajo, cortados en el centro)
+  railStrip(BOARD.x + 12, RAIL.tp, BOARD.w / 2 - 18, "#e2571e", "+5V");
+  railStrip(BOARD.x + BOARD.w / 2 + 6, RAIL.tp, BOARD.w / 2 - 18, "#e2571e", "+5V");
+  railStrip(BOARD.x + 12, RAIL.tn, BOARD.w / 2 - 18, "#2e7ad6", "GND");
+  railStrip(BOARD.x + BOARD.w / 2 + 6, RAIL.tn, BOARD.w / 2 - 18, "#2e7ad6", "GND");
+  railStrip(BOARD.x + 12, RAIL.bp, BOARD.w / 2 - 18, "#e2571e", "+5V");
+  railStrip(BOARD.x + BOARD.w / 2 + 6, RAIL.bp, BOARD.w / 2 - 18, "#e2571e", "+5V");
+  railStrip(BOARD.x + 12, RAIL.bn, BOARD.w / 2 - 18, "#2e7ad6", "GND");
+  railStrip(BOARD.x + BOARD.w / 2 + 6, RAIL.bn, BOARD.w / 2 - 18, "#2e7ad6", "GND");
   for (let c = 1; c <= NCOLS; c++)
-    for (const y of [RAIL.tp, RAIL.tn, RAIL.bn, RAIL.bp]) hole(colX(c), y, 3.1);
-  // separador central (ranura)
-  ctx.fillStyle = "#d9d9d2"; ctx.fillRect(BOARD.x + 4, 318, BOARD.w - 8, 10);
-  ctx.fillStyle = "#b5b5ad"; ctx.fillRect(BOARD.x + 4, 321, BOARD.w - 8, 2);
-  // grandes huecos de la matriz
+    for (const y of [RAIL.tp, RAIL.tn, RAIL.bp, RAIL.bn]) hole(colX(c), y);
+  // matriz a-e / f-j con ranura
   for (const arr of [rowsA, rowsB])
-    for (const y of arr) for (let c = 1; c <= NCOLS; c++) hole(colX(c), y, 3.1);
-  // nÃºmeros de columna
+    for (const y of arr) for (let c = 1; c <= NCOLS; c++) hole(colX(c), y);
+  ctx.fillStyle = "#d9d9d2"; ctx.fillRect(BOARD.x + 4, 322, BOARD.w - 8, 9);
+  ctx.fillStyle = "#b5b5ad"; ctx.fillRect(BOARD.x + 4, 325, BOARD.w - 8, 2);
+  // números y letras
   ctx.fillStyle = "#9a9a91"; ctx.font = "10px system-ui"; ctx.textAlign = "center";
-  for (let c = 5; c <= NCOLS; c += 5) ctx.fillText(String(c), colX(c), BOARD.y + 66);
-  for (let c = 5; c <= NCOLS; c += 5) ctx.fillText(String(c), colX(c), BOARD.y + BOARD.h - 6);
-  // letras de fila derecha e izquierda
-  ctx.fillStyle = "#9a9a91"; ctx.font = "700 10px system-ui";
-  ctx.textAlign = "left";
-  "abcde".split("").forEach((l, i) => ctx.fillText(l, BOARD.x + BOARD.w - 14, rowsA[i] + 3.5));
-  "fghij".split("").forEach((l, i) => ctx.fillText(l, BOARD.x + BOARD.w - 14, rowsB[i] + 3.5));
-}
-
-// ===== partes (fuera del protoboard) =====
-const PARTS = {
-  fuente: { x: 40,  y: 20,  w: 128, h: 64, fill: "#c94f43", name: "PILA 9V" },
-  buck:   { x: 226, y: 20,  w: 168, h: 64, fill: "#1a1f27", name: "BUCK 9V\n-> 5.0 V" },
-  servo1: { x: 1006,y: 12,  w: 176, h: 80, fill: "#b8c3cd", name: "SERVO\nSG90" },
-  led1:   { x: 546, y: 560, w: 96,  h: 96, fill: "#5cc273", name: "LED 1\n(P1)" },
-  led2:   { x: 676, y: 560, w: 96,  h: 96, fill: "#5cc273", name: "LED 2\n(P2)" },
-  ky1:    { x: 392, y: 560, w: 120, h: 96, fill: "#4b86c5", name: "KY-033\nsensor P1" },
-  lcd:    { x: 802, y: 548, w: 190, h: 124, fill: "#3da65b", name: "LCD 1602\n(I2C)" }
-};
-const UNO = { x: 24, y: 542, w: 330, h: 208 };
-const PIN_POS = {
-  "ky1:VCC": {dx:.3, dy:0, s:'t'}, "ky1:GND": {dx:.7, dy:0, s:'t'},
-  "ky1:OUT": {dx:1,  dy:.55, s:'r'},
-  "led1:A":  {dx:.35, dy:0, s:'t'}, "led1:C":  {dx:.65, dy:0, s:'t'},
-  "led2:A":  {dx:.35, dy:0, s:'t'}, "led2:C":  {dx:.65, dy:0, s:'t'},
-  "servo1:V+":  {dx:.28, dy:1, s:'b'}, "servo1:GND": {dx:.72, dy:1, s:'b'},
-  "servo1:PWM": {dx:.42, dy:0, s:'t'},
-  "lcd:VCC": {dx:.25, dy:0, s:'t'}, "lcd:GND": {dx:.75, dy:0, s:'t'},
-  "lcd:SDA": {dx:1,   dy:.35, s:'r'}, "lcd:SCL": {dx:1, dy:.65, s:'r'},
-  "fuente:+": {dx:1, dy:.3, s:'r'}, "fuente:-": {dx:1, dy:.7, s:'r'},
-  "buck:IN+": {dx:0, dy:.3, s:'l'}, "buck:IN-": {dx:0, dy:.7, s:'l'},
-  "buck:OUT+":{dx:1, dy:.3, s:'r'}, "buck:OUT-":{dx:1, dy:.7, s:'r'}
-};
-function pinAnchor(pin) {
-  const order = ["13","12","11","A0","A4","A5","GND.1","GND"];
-  const i = order.indexOf(pin) < 0 ? 6 : order.indexOf(pin);
-  return { x: UNO.x + UNO.w, y: UNO.y + 34 + i * 25, label: pin };
+  for (let c = 5; c <= NCOLS; c += 5) { ctx.fillText(String(c), colX(c), BOARD.y + 18); ctx.fillText(String(c), colX(c), BOARD.y + BOARD.h - 6); }
+  ctx.font = "700 10px system-ui"; ctx.textAlign = "left";
+  "abcde".split("").forEach((l, i) => ctx.fillText(l, BOARD.x + BOARD.w - 12, rowsA[i] + 3.5));
+  "fghij".split("").forEach((l, i) => ctx.fillText(l, BOARD.x + BOARD.w - 12, rowsB[i] + 3.5));
 }
 function gridHole(col, row) {
-  if (row === "tp") return { x: colX(col), y: RAIL.tp + 10, label: "TP" + col };
-  if (row === "tn") return { x: colX(col), y: RAIL.tn + 10, label: "TN" + col };
+  if (row === "tp") return { x: colX(col), y: RAIL.tp };
+  if (row === "tn") return { x: colX(col), y: RAIL.tn };
+  if (row === "bp") return { x: colX(col), y: RAIL.bp };
+  if (row === "bn") return { x: colX(col), y: RAIL.bn };
   const r = rowIndex[row];
   const arr = "abcde".includes(row) ? rowsA : rowsB;
-  return { x: colX(col), y: arr[r], label: col + row };
+  return { x: colX(col), y: arr[r] };
 }
+
+// ===== piezas =====
+const P = {
+  fuente: { x: 40,  y: 16,  w: 128, h: 56, fill: "#c94f43", name: "PILA 9V" },
+  buck:   { x: 212, y: 12,  w: 168, h: 62, fill: "#1a1f27", name: "BUCK\n9V->5.0V" },
+  servo1: { x: 1180,y: 6,   w: 172, h: 78, fill: "#b8c3cd", name: "SERVO\nSG90" },
+  uno:    { x: 20,  y: 546, w: 322, h: 230, fill: "#0f5f6b", name: "" }
+};
+// 3 plazas: cada una con sensor KY-033 + LED + resistencia
+const SPOTS = [
+  { n: 1, sensor: { x: 388, y: 546, w: 118, h: 108, fill: "#4b86c5", name: "KY-033\n(P1 físico)" },
+          led:    { x: 546, y: 546, w: 88,  h: 108, fill: "#3aa653", name: "LED 1\n(P1)" },
+          pinS: 13, pinL: 12, r: "R1 220Ω" },
+  { n: 2, sensor: { x: 664, y: 546, w: 118, h: 108, fill: "#4b86c5", name: "KY-033\n(P2)" },
+          led:    { x: 822, y: 546, w: 88,  h: 108, fill: "#3aa653", name: "LED 2\n(P2)" },
+          pinS: 6, pinL: 11, r: "R2 220Ω" },
+  { n: 3, sensor: { x: 940, y: 546, w: 118, h: 108, fill: "#4b86c5", name: "KY-033\n(P3 futuro)" },
+          led:    { x: 1098,y: 546, w: 88,  h: 108, fill: "#3aa653", name: "LED 3\n(P3)" },
+          pinS: 2, pinL: 8,  r: "R3 220Ω" }
+];
+const LCD = { x: 1182, y: 300, w: 190, h: 118, fill: "#3da65b", name: "LCD 1602\n(I2C)" };
+// posiciones de pines dentro de cada pieza (usadas por los cables)
+const PINS = {
+  "ky1:VCC": [ .5, 0, 't' ], "ky1:GND": [ .75, 0, 't' ], "ky1:OUT": [ 1, .55, 'r' ],
+  "led1:A":  [ .4, 0, 't' ], "led1:C":  [ .75, 0, 't' ],
+  "ky2:VCC": [ .5, 0, 't' ], "ky2:GND": [ .75, 0, 't' ], "ky2:OUT": [ 1, .55, 'r' ],
+  "led2:A":  [ .4, 0, 't' ], "led2:C":  [ .75, 0, 't' ],
+  "ky3:VCC": [ .5, 0, 't' ], "ky3:GND": [ .75, 0, 't' ], "ky3:OUT": [ 1, .55, 'r' ],
+  "led3:A":  [ .4, 0, 't' ], "led3:C":  [ .75, 0, 't' ],
+  "servo:V+":   [ .25, 1, 'b' ], "servo:GND":  [ .75, 1, 'b' ], "servo:PWM": [ .38, 0, 't' ],
+  "lcd:VCC": [ .25, 0, 't' ], "lcd:GND": [ .75, 0, 't' ], "lcd:SDA": [ 1, .35, 'r' ], "lcd:SCL": [ 1, .65, 'r' ],
+  "fuente:+": [ 1, .3, 'r' ], "fuente:-": [ 1, .7, 'r' ],
+  "buck:IN+": [ 0, .3, 'l' ], "buck:IN-": [ 0, .7, 'l' ], "buck:OUT+":[ 1, .3, 'r' ], "buck:OUT-":[ 1, .7, 'r' ],
+  "uno:GND.1": [ 1, .75, 'r' ], "uno:A0": [ 1, .25, 'r' ], "uno:A4": [ 1, .375, 'r' ], "uno:A5": [ 1, .5, 'r' ],
+  "uno:13": [ 1, .875, 'r' ], "uno:12": [ 1, .25, 'r' ], "uno:11": [ 1, .5, 'r' ], "uno:8": [ 1, .625, 'r' ], "uno:6": [ 1, .75, 'r' ], "uno:2": [ 1, .125, 'r' ]
+};
+
+function pinXY(id, pin) {
+  if (id === "uno") return { x: P.uno.x + P.uno.w, y: P.uno.y + 40 + ({ "13":6,"12":0,"11":0,"6":3,"8":4,"2":6 }[pin] ?? 7) * 24, label: pin };
+  let r;
+  if (id === "fuente") r = P.fuente;
+  else if (id === "buck") r = P.buck;
+  else if (id === "servo") r = P.servo1;
+  else if (id === "lcd") r = LCD;
+  else r = SPOTS.map(s => ({ k: "ky" + s.n, r: s.sensor })).find(o => o.k === id);
+  return null; // se calcula abajo
+}
+
 function partPin(key) {
   const [id, pin] = key.split(":");
-  const r = PARTS[id], o = PIN_POS[key];
-  if (!r || !o) return { x: 0, y: 0, label: key };
-  let x, y;
-  if (o.s === 't')      { x = r.x + r.w * o.dx; y = r.y; }
-  else if (o.s === 'b') { x = r.x + r.w * o.dx; y = r.y + r.h; }
-  else if (o.s === 'r') { x = r.x + r.w;       y = r.y + r.h * o.dy; }
-  else                  { x = r.x;             y = r.y + r.h * o.dy; }
+  // pie de componente por zona
+  let r;
+  if (id === "fuente") r = P.fuente;
+  else if (id === "buck") r = P.buck;
+  else if (id === "servo") r = P.servo1;
+  else if (id === "lcd") r = LCD;
+  else {
+    const m = SPOTS.find(s => key.startsWith("ky" + s.n));
+    const l = SPOTS.find(s => key.startsWith("led" + s.n));
+    if (m && key.startsWith("ky")) r = m.sensor; else if (l) r = l.led;
+  }
+  if (id === "uno") {
+    const order = { "2":0, "8":1, "6":2, "11":3, "12":4, "13":5, "A0":7, "A4":8, "A5":9, "GND.1":11 };
+    const i = order[pin] ?? 11;
+    return { x: P.uno.x + P.uno.w, y: P.uno.y + 30 + i * 17, label: key };
+  }
+  if (!r) return { x: 0, y: 0, label: key };
+  const o = PINS[key];
+  let x = o[0] * r.w + r.x, y;
+  if (o[2] === 't' || o[2] === 'b') { y = r.y + r.h * o[1]; }
+  else if (o[2] === 'r') { x = r.x + r.w; y = r.y + r.h * o[1]; }
+  else { x = r.x; y = r.y + r.h * o[1]; }
   return { x, y, label: key };
 }
-function parseEnd(e) {
-  if (e.startsWith("uno:")) return pinAnchor(e.slice(4));
-  const id = e.startsWith("bb:") ? e.slice(3) : null;
-  const rail = id && id.match(/^(tp|tn)\.(\d+)$/);
-  if (rail) return gridHole(+rail[2], rail[1]);
-  const cell = id && id.match(/^(\d+)t\.([a-j])$/);
-  if (cell) return gridHole(+cell[1], cell[2]);
-  const cell2 = id && id.match(/^(\d+)\.([a-j])$/);
-  if (cell2) return gridHole(+cell2[1], cell2[2]);
-  return partPin(e);
+function anchorFor(end) {
+  if (end.startsWith("bb:")) {
+    const id = end.slice(3);
+    const rail = id.match(/^(tp|tn|bp|bn)\.(\d+)$/);
+    if (rail) {
+      const c = +rail[2], row = rail[1];
+      const map = { tp: RAIL.tp, tn: RAIL.tn, bp: RAIL.bp, bn: RAIL.bn };
+      return { x: colX(c), y: map[row] };
+    }
+    const cell = id.match(/^(\d+)t?\.([a-j])$/);
+    if (cell) {
+      const c = +cell[1], ch = cell[2];
+      const r = rowIndex[ch];
+      const arr = "abcde".includes(ch) ? rowsA : rowsB;
+      return { x: colX(c), y: arr[r] };
+    }
+    return { x: 0, y: 0 };
+  }
+  return partPin(end);
 }
-const WIRES = DIAGRAM.connections.map((c, i) => ({ i, a: parseEnd(c[0]), b: parseEnd(c[1]), color: colorName(c) }));
-let sel = -1;
+
+const WIRES = [
+  // energía
+  ["fuente:+", "buck:IN+", "red"],
+  ["fuente:-", "buck:IN-", "black"],
+  ["buck:OUT+", "bb:tp.39", "red"],
+  ["buck:OUT-", "bb:tn.39", "black"],
+  ["uno:GND.1", "bb:tn.2", "black"],
+  // plaza 1
+  ["ky1:VCC", "bb:tp.3", "red"],
+  ["ky1:GND", "bb:tn.3", "black"],
+  ["ky1:OUT", "bb:2t.a", "gold"],
+  ["led1:A",  "bb:11t.a", "gold"],
+  ["led1:C",  "bb:tn.10", "black"],
+  // plaza 2
+  ["ky2:VCC", "bb:tp.6", "red"],
+  ["ky2:GND", "bb:tn.7", "black"],
+  ["ky2:OUT", "bb:6t.a", "gold"],
+  ["led2:A",  "bb:26t.a", "gold"],
+  ["led2:C",  "bb:tn.25", "black"],
+  // plaza 3
+  ["ky3:VCC", "bb:tp.12", "red"],
+  ["ky3:GND", "bb:tn.13", "black"],
+  ["ky3:OUT", "bb:3t.a", "gold"],
+  ["led3:A",  "bb:8t.a", "gold"],
+  ["led3:C",  "bb:tn.16", "black"],
+  // servo
+  ["servo:V+",  "bb:tp.49", "red"],
+  ["servo:GND", "bb:tn.50", "black"],
+  ["servo:PWM", "bb:48t.a", "orange"],
+  ["uno:A0",    "bb:48t.c", "orange"],
+  // LCD
+  ["lcd:VCC", "bb:tp.50", "red"],
+  ["lcd:GND", "bb:tn.50", "black"],
+  ["lcd:SDA", "bb:55t.a", "green"],
+  ["uno:A4",  "bb:55t.d", "green"],
+  ["lcd:SCL", "bb:56t.a", "blue"],
+  ["uno:A5",  "bb:56t.d", "blue"],
+  // pines a placa
+  ["uno:13", "bb:2t.a", "gold"],
+  ["uno:6",  "bb:6t.c", "gold"],
+  ["uno:2",  "bb:3t.c", "gold"],
+  ["uno:12", "bb:11t.d", "gold"],
+  ["uno:11", "bb:26t.d", "gold"],
+  ["uno:8",  "bb:8t.d", "gold"]
+].map((c, i) => ({ i, a: anchorFor(c[0]), b: anchorFor(c[1]), color: ({ red:"#d33a2c", black:"#20242c", orange:"#e8751a", gold:"#d4a017", green:"#3f9e4f", blue:"#2e7ad6" })[c[2]], label: c[0] + "  →  " + c[1] }));
 
 function drawParts() {
-  // UNO
-  rr(UNO.x, UNO.y, UNO.w, UNO.h, 12, "#0f5f6b", "#083e46", 1.5);
-  ctx.fillStyle = "#7ef0ff"; ctx.font = "700 15px system-ui"; ctx.textAlign = "left";
-  ctx.fillText("ARDUINO UNO R4 WiFi", UNO.x + 18, UNO.y + 26);
-  ctx.fillStyle = "#bff3ff"; ctx.font = "12px system-ui";
-  ["pines usados:","13 -> KY-033 OUT","12 -> LED 1  (P1)","11 -> LED 2  (P2)","A0 -> seÃ±al SERVO","A4 -> LCD SDA","A5 -> LCD SCL","GND -> riel comÃºn"].forEach((t, i) =>
-    ctx.fillText(t, UNO.x + 18, UNO.y + 52 + i * 20));
-  ctx.fillStyle = "#f5e6a8"; ctx.fillText("NUNCA: 5V del Arduino -> servo", UNO.x + 18, UNO.y + UNO.h - 14);
-  for (const [id, r] of Object.entries(PARTS)) {
+  for (const r of [P.fuente, P.buck, P.servo1]) {
     rr(r.x, r.y, r.w, r.h, 10, r.fill, "#00000033", 1.5);
+    ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "700 13px system-ui";
+    r.name.split("\n").forEach((t, i) => ctx.fillText(t, r.x + r.w / 2, r.y + r.h / 2 - 2 + i * 16));
+  }
+  // UNO
+  rr(P.uno.x, P.uno.y, P.uno.w, P.uno.h, 12, P.uno.fill, "#083e46", 1.5);
+  ctx.fillStyle = "#7ef0ff"; ctx.font = "700 15px system-ui"; ctx.textAlign = "left";
+  ctx.fillText("ARDUINO UNO R4 WiFi", P.uno.x + 16, P.uno.y + 28);
+  ctx.fillStyle = "#bff3ff"; ctx.font = "11px system-ui";
+  ["pines usados:","D13 → sens P1 · D12 → LED1","D6 → sens P2  · D11 → LED2","D2 → sens P3  · D8 → LED3","A0 → señal SERVO","A4 → LCD SDA · A5 → LCD SCL","GND → riel común"].forEach((t, i) =>
+    ctx.fillText(t, P.uno.x + 16, P.uno.y + 52 + i * 20));
+  ctx.fillStyle = "#f5e6a8"; ctx.fillText("NUNCA: 5V del Arduino → servo", P.uno.x + 16, P.uno.y + P.uno.h - 14);
+  // plazas (sensor + LED)
+  SPOTS.forEach(s => {
+    for (const r of [s.sensor, s.led]) { rr(r.x, r.y, r.w, r.h, 10, r.fill, "#00000033", 1.4); }
     ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "700 12px system-ui";
-    r.name.split("\n").forEach((t, i) => ctx.fillText(t, r.x + r.w / 2, r.y + r.h / 2 - 2 + i * 17));
-  }
+    s.sensor.name.split("\n").forEach((t, i) => ctx.fillText(t, s.sensor.x + s.sensor.w / 2, s.sensor.y + 34 + i * 17));
+    s.led.name.split("\n").forEach((t, i) => ctx.fillText(t, s.led.x + s.led.w / 2, s.led.y + 34 + i * 17));
+    // resistencia 220 Ω en serie con el LED
+    const rx = s.led.x + s.led.w / 2, ry = s.led.y + s.led.h - 18;
+    ctx.fillStyle = "#d8b97a"; rr(rx - 24, ry - 5, 48, 10, 5, "#d8b97a", "#8a6d34", 1.2);
+    ctx.fillStyle = "#7a4a1e"; ["#c0392b","#c0392b","#6e4f16","#c9a227"].forEach((c, i) => ctx.fillRect(rx - 18 + i * 10, ry - 3, 5, 6));
+    ctx.fillStyle = "#333"; ctx.font = "700 9px system-ui"; ctx.textAlign = "center";
+    ctx.fillText(s.r, rx, ry + 16);
+  });
+  // LCD
+  rr(LCD.x, LCD.y, LCD.w, LCD.h, 10, LCD.fill, "#00000033", 1.4);
+  ctx.fillStyle = "#fff"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
+  LCD.name.split("\n").forEach((t, i) => ctx.fillText(t, LCD.x + LCD.w / 2, LCD.y + 46 + i * 18));
 }
+
+// guiado ordenado: vertical → horizontal por LANES distintas → vertical hasta el hueco/pin
 function drawWires() {
-  ctx.lineWidth = 3.1; ctx.lineCap = "round"; ctx.lineJoin = "round";
-  for (const w of WIRES) {
-    ctx.globalAlpha = (sel === -1 || sel === w.i) ? 1 : 0.10;
+  ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  const lanes = {};
+  WIRES.forEach((w, i) => {
+    const dir = (w.a.y < 530 && w.b.y < 530) ? 1 : 1;   // todos caen al tablero desde abajo
+    const laneY = 534 - (i % 12) * 5.5;
+    const ax = w.a.x, ay = w.a.y, bx = w.b.x, by = w.b.y;
+    const path = new Path2D();
+    path.moveTo(ax, ay);
+    const midX1 = (ax + 60) * .8 + ax * .2;
+    path.lineTo(midX1, ay);          // corta un poco afuera
+    path.lineTo(midX1, laneY);
+    path.lineTo(bx, laneY);
+    path.lineTo(bx, by);
     ctx.strokeStyle = w.color;
-    const mx = (w.a.x + w.b.x) / 2;
-    const sag = Math.min(70, Math.abs(w.b.x - w.a.x) * 0.10 + 14);
-    ctx.beginPath(); ctx.moveTo(w.a.x, w.a.y);
-    ctx.quadraticCurveTo(mx, Math.max(w.a.y, w.b.y) + sag, w.b.x, w.b.y);
-    ctx.stroke();
+    ctx.stroke(path);
+    // extremo (cápsula)
     ctx.fillStyle = w.color;
-    ctx.beginPath(); ctx.arc(w.a.x, w.a.y, 4.2, 0, 7); ctx.fill();
-    ctx.beginPath(); ctx.arc(w.b.x, w.b.y, 4.2, 0, 7); ctx.fill();
-  }
-  ctx.globalAlpha = 1;
+    ctx.beginPath(); ctx.arc(ax, ay, 4.3, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(bx, by, 4.3, 0, 7); ctx.fill();
+  });
 }
-function draw() { drawBoard(); drawParts(); drawWires(); }
-function select(i) {
-  sel = i;
-  document.querySelectorAll("#lista li").forEach(li => li.classList.toggle("on", +li.dataset.i === i));
-  document.querySelectorAll(".chip").forEach(c => c.classList.toggle("on", +c.dataset.i === i));
-  draw();
-}
-function buildLegend() {
-  const list = document.getElementById("lista");
-  const chipsBox = document.getElementById("chips");
-  chipsBox.innerHTML = "";
-  for (const w of WIRES) {
-    const chip = document.createElement("button");
-    chip.className = "chip"; chip.textContent = "#" + (w.i + 1);
-    chip.dataset.i = w.i;
-    chip.onclick = () => select(sel === w.i ? -1 : w.i);
-    chipsBox.appendChild(chip);
-    const p = DIAGRAM.connections[w.i];
-    const li = document.createElement("li");
-    li.innerHTML = "<code>" + p[0] + "</code> â†’ <code>" + p[1] + "</code>";
-    li.dataset.i = w.i;
-    li.onclick = () => select(sel === w.i ? -1 : w.i);
-    list.appendChild(li);
-  }
+function draw() {
+  drawBoard();
+  drawParts();
+  drawWires();
 }
 draw();
-buildLegend();
+
+const UL = document.getElementById("lista");
+const DL = document.getElementById("lista2");
+WIRES.forEach(w => {
+  const li = document.createElement("li");
+  li.innerHTML = "<code>" + w.label + "</code>";
+  const clip = document.createElement("button");
+  li.title = w.label;
+  (w.label.startsWith("fuente") || w.label.startsWith("buck") || w.label.startsWith("uno:GND")) ? UL.appendChild(li) : DL.appendChild(li);
+});
 </script>
 </body>
 </html>

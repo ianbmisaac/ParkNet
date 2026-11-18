@@ -1,0 +1,253 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>ParkNet â€” mapa visual del circuito (Tinker)</title>
+<style>
+  :root { --bg:#0a1420; --panel:#101f2b; --ink:#dce9f2; --mut:#7e94a8; --acc:#38bdf8; --acc2:#ffd23f; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:"Segoe UI",system-ui,sans-serif; }
+  header { display:flex; align-items:baseline; gap:18px; padding:14px 24px 8px; flex-wrap:wrap; }
+  h1 { font-size:1.05rem; margin:0; color:#fff; }
+  header span { color:var(--mut); font-size:.8rem; }
+  main { display:grid; grid-template-columns:minmax(340px,1fr) 340px; gap:14px; padding:0 24px 22px; }
+  @media (max-width:900px) { main { grid-template-columns:1fr; } }
+  #stage { background:#f2ecdd; border-radius:14px; border:1px solid #2a3d4d; overflow:hidden; }
+  canvas { display:block; width:100%; height:auto; }
+  aside { background:var(--panel); border-radius:14px; padding:14px; max-height:100%; overflow:auto; }
+  aside h2 { font-size:.8rem; letter-spacing:.06em; text-transform:uppercase; color:var(--mut); margin:2px 0 10px; }
+  .chip { display:inline-block; border:1px solid #274055; border-radius:999px; padding:2px 9px; font-size:.72rem; color:var(--acc); margin:2px 4px 6px 0; cursor:pointer; user-select:none; }
+  .chip.on { background:#123; border-color:var(--acc); }
+  ol#lista { margin:0; padding-left:1.2rem; font-size:.82rem; color:#c9d6df; }
+  ol#lista li { padding:3px 6px; border-radius:6px; border-left:4px solid transparent; cursor:pointer; line-height:1.45; }
+  ol#lista li:hover { background:#16222d; }
+  ol#lista li.on { background:#132533; border-left-color:var(--acc2); color:#fff; }
+  ol#lista code { color:var(--acc2); }
+  footer { padding:10px 24px 20px; color:var(--mut); font-size:.72rem; }
+  .k { display:inline-block; width:13px; height:9px; border-radius:2px; vertical-align:middle; margin-right:5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ParkNet â€” mapa visual del circuito (como el Tinker/Wokwi)</h1>
+  <span>Pila 9V â†’ BUCK â†’ rieles Â· servo por su propia fuente Â· GND comÃºn obligatorio</span>
+</header>
+<main>
+  <div id="stage"><canvas id="cv" width="1120" height="700" role="img" aria-label="DistribuciÃ³n del protoboard"></canvas></div>
+  <aside>
+    <h2>Cableado (clic para resaltar en el mapa)</h2>
+    <div id="chips"></div>
+    <ol id="lista"></ol>
+  </aside>
+</main>
+<footer>Generado desde el mismo diagram.json de tu carpeta <code>C:\Users\pexji\Downloads\wokwi\diagram.json</code> â€” refleja el pin 11 real. Los LEDs en fÃ­sico necesitan resistencia 220â€“470 Î© en serie.</footer>
+<script>
+const DIAGRAM = {
+  "version": 1,
+  "author": "Equipo Fixmol",
+  "editor": "wokwi",
+  "parts": [{ "type": "wokwi-breadboard", "id": "bb", "top": 340.0, "left": 400, "attrs": {} },
+    { "type": "wokwi-text", "id": "lblBB", "top": 310.0, "left": 390, "attrs": { "text": "PROTOBOARD LARGA  (+5V arriba / GND abajo)" } },
+    { "type": "wokwi-arduino-uno", "id": "uno", "top": 520.0, "left": 30, "attrs": {} },
+    { "type": "wokwi-text", "id": "lblUno", "top": 484.0, "left": 20, "attrs": { "text": "ARDUINO UNO R4 WiFi" } },
+    { "type": "wokwi-pir-motion-sensor", "id": "ky1", "top": 208.0, "left": 396, "attrs": { "delayTime": "5" } },
+    { "type": "wokwi-text", "id": "lbl_ky1", "top": 178.0, "left": 396, "attrs": { "text": "KY-033" } },
+    { "type": "wokwi-led", "id": "led1", "top": 258.0, "left": 493, "attrs": { "color": "green" } },
+    { "type": "wokwi-text", "id": "lbl_led1", "top": 228.0, "left": 493, "attrs": { "text": "LED 1" } },
+    { "type": "wokwi-led", "id": "led2", "top": 258.0, "left": 637, "attrs": { "color": "green" } },
+    { "type": "wokwi-text", "id": "lbl_led2", "top": 228.0, "left": 637, "attrs": { "text": "LED 2" } },
+    { "type": "wokwi-servo", "id": "servo1", "top": 31.0, "left": 873, "attrs": { "horn": "single" } },
+    { "type": "wokwi-text", "id": "lbl_servo1", "top": 2.0, "left": 873, "attrs": { "text": "SERVO" } },
+    { "type": "wokwi-lcd1602", "id": "lcd", "top": 200.0, "left": 900, "attrs": { "pins": "i2c", "i2cAddress": "0x27", "color": "white", "background": "green" } },
+    { "type": "wokwi-text", "id": "lbl_lcd", "top": 170.0, "left": 900, "attrs": { "text": "PANTALLA LCD 1602 (I2C)" } },
+    { "type": "wokwi-9v", "id": "fuente", "top": 26.0, "left": 600, "attrs": { "name": "9V" } },
+    { "type": "wokwi-text", "id": "lbl_fuente", "top": -4.0, "left": 560, "attrs": { "text": "PILA 9 V (cuadrada)" } },
+    { "type": "wokwi-custom-chip", "id": "buck", "top": 12.0, "left": 690, "attrs": { "name": "BUCK 9V->5V", "pins": "IN+:left.0,IN-:left.1,OUT+:right.0,OUT-:right.1", "pinLabels": { "IN+": "+9V", "IN-": "0V", "OUT+": "+5V", "OUT-": "GND" } }, "children": [ { "type": "rect", "props": { "x": 6, "y": 6, "width": 72, "height": 56, "rx": 4, "fill": "#111111", "stroke": "#999999", "strokeWidth": 1.5 } }, { "type": "text", "props": { "x": 42, "y": 30, "fontSize": 11, "fill": "#ffffff", "textAnchor": "middle", "text": "BUCK" } }, { "type": "text", "props": { "x": 42, "y": 50, "fontSize": 10, "fill": "#fdd835", "textAnchor": "middle", "text": "9V a 5V" } } ] },
+    { "type": "wokwi-text", "id": "lbl_buck", "top": -16.0, "left": 690, "attrs": { "text": "REDUCTOR BUCK 9V -> 5V (ajustar a 5.0 V)" } },
+    { "type": "wokwi-text", "id": "lblTabla", "top": 735.0, "left": 30, "attrs": { "text": "CONEXIONES COMPLETAS\n  plaza 1   sensor KY-033 OUT -> pin 13  (col 2)  |  LED 1 -> pin 12  (col 11)\n  plaza 2   (virtual, se simula desde la web)      |  LED 2 -> pin 11  (col 26)\n\n  SERVO      senal PWM -> pin A0 (col 48)  |  +5V al rail rojo  |  GND al rail negro\n  PANTALLA   LCD 1602 con conversor I2C:\n             SDA -> pin A4 (col 55)  |  SCL -> pin A5 (col 56)  |  +5V y GND a los rails\n\n  SENSORES   VCC al rail rojo (+5V)  |  GND al rail negro  |  OUT al pin del Arduino\n  LEDS       anodo al pin del Arduino (con resistencia 330-470 ohm)  |  catodo al rail negro\n\n  PILA       9 V (cuadrada) -> BUCK ajustado a 5.0 V -> rail rojo/azul (col 39)\n  PROHIBIDO: conectar la pila de 9 V directo al circuito (mata LCD y sensor).\n  IMPORTANTE: el rÃƒÂ¡il rojo lo alimenta la FUENTE EXTERNA (5 V), no el Arduino.\n  El Arduino sÃƒÂ³lo lleva su GND al rÃƒÂ¡il azul (masa comÃƒÂºn). Su pin 5V va libre.\n  AsÃƒÂ­ el servo no tira del USB de la placa y no hay caidas de tensiÃƒÂ³n." } }],
+  "connections": [[ "ky1:VCC", "bb:tp.2", "red", [ "v48.4" ] ],
+    [ "ky1:GND", "bb:tn.4", "black", [ "h-0.3", "v58.3" ] ],
+    [ "ky1:OUT", "bb:2t.a", "gold", [ "h-9.7", "v87.2" ] ],
+    [ "led1:C", "bb:tn.10", "black", [ "h0.4", "v58.3" ] ],
+    [ "led1:A", "bb:11t.a", "gold", [ "v87.2" ] ],
+    [ "led2:C", "bb:tn.25", "black", [ "h0.4", "v58.3" ] ],
+    [ "led2:A", "bb:26t.a", "gold", [ "v87.2" ] ],
+    [ "servo1:V+", "bb:tp.49", "red", [ "h9.6", "v286.4" ] ],
+    [ "servo1:GND", "bb:tn.50", "black", [ "h19.2", "v277.3" ] ],
+    [ "servo1:PWM", "bb:48t.a", "orange", [ "v287.2" ] ],
+    [ "lcd:VCC", "bb:tp.50", "red", [ "*", "h0" ] ],
+    [ "lcd:GND", "bb:tn.50", "black", [ "*", "h0" ] ],
+    [ "lcd:SDA", "bb:55t.a", "green", [ "*", "h0" ] ],
+    [ "lcd:SCL", "bb:56t.a", "blue", [ "*", "h0" ] ],
+    [ "uno:A4", "bb:55t.d", "green", [ "v-36.0", "h693.9", "v-259.7" ] ],
+    [ "uno:A5", "bb:56t.d", "blue", [ "v-24.0", "h694.0", "v-271.7" ] ],
+    [ "uno:13", "bb:2t.a", "gold", [ "v-133.0", "h306.7", "v-8.8" ] ],
+    [ "uno:12", "bb:11t.a", "gold", [ "v-116.0", "h383.5", "v-25.8" ] ],
+    [ "uno:11", "bb:26t.a", "gold", [ "v-99.0", "h508.3", "v-42.8" ] ],
+    [ "uno:A0", "bb:48t.c", "orange", [ "v-48.0", "h664.8", "v-257.2" ] ],
+    [ "fuente:+", "buck:IN+", "red", [ "*", "h0" ] ],
+    [ "fuente:-", "buck:IN-", "black", [ "*", "h0" ] ],
+    [ "buck:OUT+", "bb:tp.39", "red", [ "h-1.5", "v322.4" ] ],
+    [ "buck:OUT-", "bb:tn.39", "black", [ "h17.0", "v304.0", "h-13.5", "v6.3" ] ],
+    [ "uno:GND.1", "bb:tn.2", "black", [ "v-148.0", "h316.2", "v-22.7" ] ]]
+};
+
+const COLORS = { red:"#d33a2c", black:"#20242c", orange:"#e8751a", gold:"#d4a017", green:"#3f9e4f", blue:"#2e7ad6", white:"#f5f5f5", gray:"#7d8794" };
+const colorName = c => (typeof c==="string" && COLORS[c]) ? COLORS[c] : (typeof c==="string" ? c : "#888");
+
+const canvas = document.getElementById("cv");
+const ctx = canvas.getContext("2d");
+
+const BB = { x: 60, y: 118, w: 1000, h: 262, cols: 60, railH: 16, rowHS: 26, gap: 12 };
+const colX = c => BB.x + 14 + (c - 1) * ((BB.w - 28) / (BB.cols - 1));
+const railY = r => BB.y + (r === "tp" ? 8 : 30);
+const rowsA = [0,1,2,3,4].map(i => BB.y + 52 + i * BB.rowHS);
+const rowsB = [0,1,2,3,4].map(i => BB.y + 158 + i * BB.rowHS);
+const rowIndex = { a:0,b:1,c:2,d:3,e:4, f:0,g:1,h:2,i:3,j:4 };
+
+// partes: posiciones desde el diagram original (escala aproximada sobre nuestro lienzo)
+function partRect(id) {
+  const p = DIAGRAM.parts.find(p => p.id === id);
+  if (!p) return null;
+  // zona inferior (componentes) y superior (fuente)
+  const zones = {
+    fuente: { x: 90,  y: 6,   w: 108, h: 52, fill: "#c94f43", name: "PILA 9V" },
+    buck:   { x: 245, y: 6,   w: 132, h: 52, fill: "#1a1f27", name: "BUCK 9â†’5V" },
+    servo1: { x: 845, y: 6,   w: 150, h: 60, fill: "#b8c3cd", name: "SERVO SG90" },
+    ky1:    { x: 118, y: 444, w: 108, h: 74, fill: "#4b86c5", name: "KY-033\n(sensor P1)" },
+    led1:   { x: 320, y: 444, w: 84,  h: 74, fill: "#5cc273", name: "LED 1\n(P1)" },
+    led2:   { x: 462, y: 444, w: 84,  h: 74, fill: "#5cc273", name: "LED 2\n(P2)" },
+    lcd:    { x: 700, y: 444, w: 150, h: 88, fill: "#3da65b", name: "LCD 1602\n(I2C)" },
+    uno:    { x: 600, y: 444, w: 0, h: 0, fill: "none" } // se dibuja aparte
+  };
+  return { ...zones[p.id], p };
+}
+
+const UNO = { x: 40, y: 468, w: 330, h: 200 };
+
+function pinAnchor(pin) {
+  // pines del UNO en su borde superior derecho/izquierdo
+  const map = { "11": 0, "12": 1, "13": 2, "A0": 3, "A4": 4, "A5": 5, "GND.1": 6, "GND": 6 };
+  const i = map[pin] ?? 3;
+  return { x: UNO.x + UNO.w - 14, y: UNO.y + 24 + i * 26, label: pin };
+}
+function gridHole(col, row) {
+  if (row === "tp") return { x: colX(col), y: railY("tp"), label: "TP" + col };
+  if (row === "tn") return { x: colX(col), y: railY("tn"), label: "TN" + col };
+  const r = rowIndex[row];
+  const arr = "abcde".includes(row) ? rowsA : rowsB;
+  return { x: colX(col), y: arr[r], label: col + row };
+}
+function parseEnd(e) {
+  const [from, id] = e.split(":");
+  if (from === "uno") return pinAnchor(id);
+  // bb:tp.39 | bb:tn.4 | bb:2t.a
+  const rail = id.match(/^(tp|tn)\.(\d+)$/);
+  if (rail) return gridHole(+rail[2], rail[1]);
+  const cell = id.match(/^(\d+)t\.([a-j])$/);
+  if (cell) return gridHole(+cell[1], cell[2]);
+  const cell2 = id.match(/^(\d+)\.([a-j])$/);
+  if (cell2) return gridHole(+cell2[1], cell2[2]);
+  return { x: 0, y: 0, label: e };
+}
+
+const WIRES = DIAGRAM.connections.map((c, i) => {
+  const [a, b, color] = c;
+  return { i, a: parseEnd(a), b: parseEnd(b), color: colorName(c[c.length - 1]) };
+});
+
+let sel = -1;
+
+function drawBreadboard() {
+  ctx.fillStyle = "#f2ecdd"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#e6decb"; ctx.strokeStyle = "#c8bda1"; ctx.lineWidth = 1.4;
+  rr(BB.x - 8, BB.y - 8, BB.w + 16, BB.h + 16, 16, true);
+  // rieles
+  for (const r of ["tp", "tn"]) {
+    ctx.fillStyle = r === "tp" ? "#d8542e" : "#37414f";
+    ctx.fillRect(BB.x + 4, railY(r) - 11, BB.w - 8, 22);
+    ctx.fillStyle = "#fff"; ctx.font = "700 11px system-ui";
+    ctx.textAlign = "left"; ctx.fillText(r === "tp" ? "+5V" : "GND", BB.x + 6, railY(r) + 4);
+    for (let c = 1; c <= BB.cols; c++) hole(colX(c), railY(r), 3.4, "#0002");
+  }
+  // huecos fila a..j
+  for (const arr of [rowsA, rowsB])
+    for (const y of arr) for (let c = 1; c <= BB.cols; c++) hole(colX(c), y, 4.6, "#0003");
+  ctx.fillStyle = "#b3a888"; ctx.fillRect(BB.x + 4, BB.y + 137, BB.w - 8, 6); // separador central
+  // nÃºmeros de columna cada 5
+  ctx.fillStyle = "#8d8165"; ctx.font = "10px system-ui"; ctx.textAlign = "center";
+  for (let c = 5; c <= BB.cols; c += 5) { const y = BB.y + BB.h - 4; ctx.fillText(String(c), colX(c), y + 12); }
+  // letras de fila
+  ctx.textAlign = "right"; ctx.font = "700 11px system-ui"; ctx.fillStyle = "#8d8165";
+  "abcde".split("").forEach((l, i) => ctx.fillText(l, BB.x - 2, rowsA[i] + 4));
+  "fghij".split("").forEach((l, i) => ctx.fillText(l, BB.x - 2, rowsB[i] + 4));
+}
+function rr(x, y, w, h, r, stroke) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill(); if (stroke) ctx.stroke(); }
+function hole(x, y, r, color) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill(); }
+
+function drawParts() {
+  // UNO
+  ctx.fillStyle = "#0f5f6b"; ctx.strokeStyle = "#084049"; rr(UNO.x, UNO.y, UNO.w, UNO.h, 12, true);
+  ctx.fillStyle = "#7ef0ff"; ctx.font = "700 13px system-ui"; ctx.textAlign = "left";
+  ctx.fillText("ARDUINO UNO R4 WiFi", UNO.x + 18, UNO.y + 22);
+  ctx.fillStyle = "#bff3ff"; ctx.font = "11px system-ui";
+  ["pines usados:", ...["13 â†’ KY-033 OUT","12 â†’ LED 1  (P1)","11 â†’ LED 2  (P2)","A0 â†’ seÃ±al SERVO","A4 â†’ LCD SDA","A5 â†’ LCD SCL","GND â†’ riel comÃºn"]].forEach((t, i) =>
+    ctx.fillText(t, UNO.x + 18, UNO.y + 44 + i * 21));
+  ctx.fillStyle = "#f5e6a8"; ctx.fillText("NUNCA: 5V del Arduino â†’ servo", UNO.x + 18, UNO.y + UNO.h - 12);
+
+  for (const p of DIAGRAM.parts) {
+    const r = partRect(p.id);
+    if (!r || !r.w) continue;
+    ctx.fillStyle = r.fill; ctx.strokeStyle = "#00000033"; rr(r.x, r.y, r.w, r.h, 10, true);
+    ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "700 11px system-ui";
+    r.name.split("\n").forEach((t, i) => ctx.fillText(t, r.x + r.w / 2, r.y + r.h / 2 - 3 + i * 15));
+  }
+}
+
+function drawWires() {
+  ctx.lineWidth = 3.2; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  for (const w of WIRES) {
+    const active = sel === -1 || sel === w.i;
+    ctx.globalAlpha = active ? 1 : 0.12;
+    ctx.strokeStyle = w.color;
+    const mx = (w.a.x + w.b.x) / 2, sag = Math.max(10, Math.abs(w.b.x - w.a.x) * 0.10 + 8);
+    ctx.beginPath(); ctx.moveTo(w.a.x, w.a.y);
+    ctx.quadraticCurveTo(mx, Math.max(w.a.y, w.b.y) + sag, w.b.x, w.b.y);
+    ctx.stroke();
+    // extremos
+    ctx.fillStyle = w.color; ctx.beginPath(); ctx.arc(w.a.x, w.a.y, 4.4, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(w.b.x, w.b.y, 4.4, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function buildLegend() {
+  const list = document.getElementById("lista");
+  const chipsBox = document.getElementById("chips");
+  chipsBox.innerHTML = "";
+  for (const w of WIRES) {
+    const chip = document.createElement("button");
+    chip.className = "chip"; chip.textContent = "#" + (w.i + 1);
+    chip.onclick = () => select(sel === w.i ? -1 : w.i);
+    chip.dataset.i = w.i;
+    chipsBox.appendChild(chip);
+    const p = DIAGRAM.connections[w.i];
+    const li = document.createElement("li");
+    li.innerHTML = "<code>" + p[0] + "</code> â†’ <code>" + p[1] + "</code>";
+    li.dataset.i = w.i;
+    li.onclick = () => select(sel === w.i ? -1 : w.i);
+    list.appendChild(li);
+  }
+}
+function select(i) {
+  sel = i;
+  document.querySelectorAll("#lista li").forEach(li => li.classList.toggle("on", +li.dataset.i === i));
+  document.querySelectorAll(".chip").forEach(c => c.classList.toggle("on", +c.dataset.i === i));
+  draw();
+}
+function draw() { drawBreadboard(); drawWires(); drawParts(); }
+draw();
+buildLegend();
+</script>
+</body>
+</html>

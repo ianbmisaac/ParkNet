@@ -176,6 +176,7 @@ function parseEnd(e) {
 const WIRES = DIAGRAM.connections.map((c, i) => {
   return { i, a: parseEnd(c[0]), b: parseEnd(c[1]), color: colorName(c) };
 });
+let sel = -1;
 function drawBreadboard() {
   ctx.fillStyle = "#f2ecdd"; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = "#e6decb"; ctx.strokeStyle = "#c8bda1"; ctx.lineWidth = 1.4;

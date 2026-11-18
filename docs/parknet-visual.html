@@ -181,6 +181,11 @@ const WIRES = [
   ["uno","GND","bb","bn.2","black"],
   ["bb","tp.60","bb","bp.60","red"],
   ["bb","tn.60","bb","bn.60","black"],
+  // puentes en los cortes medios de los rieles (hoja rasgada del MB-102)
+  ["bb","tp.29","bb","tp.31","red","bridge"],
+  ["bb","tn.29","bb","tn.31","black","bridge"],
+  ["bb","bp.29","bb","bp.31","red","bridge"],
+  ["bb","bn.29","bb","bn.31","black","bridge"],
   // servo
   ["servo","GND","bb","bn.50","black"],
   ["servo","PWM","bb","48t.a","orange"],
@@ -221,6 +226,7 @@ const WIRES = [
   a: A(c[0], c[1]),
   b: A(c[2], c[3]),
   color: C(c[4]),
+  bridge: !!c[5],
   label: c[0] + ":" + c[1] + "  →  " + c[2] + ":" + c[3],
   tagA: c[0] === "bb" ? HOLE_NAME(c[1]) : PIN_NAME(c[0], c[1]),
   tagB: c[2] === "bb" ? HOLE_NAME(c[3]) : PIN_NAME(c[2], c[3])
@@ -232,6 +238,11 @@ WIRES.shift();
 // abajo = cables de la placa/UNO hacia los componentes de abajo)
 function wirePts(w) {
   const ax = w.a.x, ay = w.a.y, bx = w.b.x, by = w.b.y;
+  // puentes de riel: arco sobre el corte
+  if (w.bridge) {
+    const my = Math.min(ay, by);
+    return [{x:ax,y:ay},{x:(ax+bx)/2,y:my-26},{x:bx,y:by}];
+  }
   const top = ay < 208;
   const laneY = top ? 130 + (w.i % 10) * 1.5 : 586 + (w.i % 10) * 1.7;
   // puentes entre rieles (misma columna): línea recta, sin zigzag
@@ -481,7 +492,7 @@ WIRES.forEach(w => {
   li.dataset.i = w.i;
   li.innerHTML = "<code>" + w.label + "</code>";
   li.onclick = () => select(sel === w.i ? -1 : w.i);
-  ((w.i < 8) ? UL : DL).appendChild(li);
+  ((w.i < 12) ? UL : DL).appendChild(li);
 });
 draw();
 </script>

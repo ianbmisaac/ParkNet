@@ -28,7 +28,7 @@
 <body>
 <header>
   <h1>ParkNet — feria: pila 9V al UNO #2 (regulador externo) → rieles del servo</h1>
-  <span>La pila NUNCA toca la placa ni el servo directo. El UNO #2 copia su pin 5V al riel rojo (con su GND al riel azul). UNO #1 con sus sensores/LEDs/I2C de siempre.</span>
+  <span>Servo alimentado SOLO con la pila vía UNO #2 (VIN→5V) · todo lo demás (LCD, sensores, LEDs) corre del UNO #1 (R4) · GND en común · puentes uniendo rieles superiores e inferiores</span>
 </header>
 <main>
   <div id="stage"><canvas id="cv" width="1456" height="892" role="img" aria-label="Montaje completo del protoboard"></canvas></div>
@@ -38,7 +38,7 @@
     <ol id="lista"></ol>
     <h3>Señales de datos</h3>
     <ol id="lista2"></ol>
-    <div class="note">Clic en un cable de la lista (o sobre él en el mapa) para resaltarlo. Energía: pila 9V → VIN del UNO #2 → 5V al riel rojo (y el 1er 5V también al riel inferior) · GND común. Datos: D13/D6/D2 (sensores) · D12/D11/D8 (LEDs vía R) · A0 (servo) · A4/A5 (LCD).</div>
+    <div class="note">Clic en un cable de la lista (o sobre él en el mapa) para resaltarlo. Energía: pila 9V → VIN UNO#2 → V+ servo (alimentado nada más con la pila) · UNO#1 5V → riel +5V para LCD/sensores/LEDs, con GND común · puentes en col 60 conectan rieles sup/inf. Datos: D13/D6/D2 (sensores) · D12/D11/D8 (LEDs vía R) · A0 (servo) · A4/A5 (LCD).</div>
   </aside>
 </main>
 <script>
@@ -129,7 +129,7 @@ function anchorCache() {
     else if (id === "uno2") p = { x: TOP.uno2.x + TOP.uno2.w, y: TOP.uno2.y + (pin === "VIN" ? 34 : pin === "5V" ? 60 : 84) };
     else if (id === "servo") p = { x: TOP.servo1.x + TOP.servo1.w * { "V+": .25, "GND": .75, "PWM": .46 }[pin], y: pin === "V+" ? TOP.servo1.y + TOP.servo1.h : pin === "PWM" ? TOP.servo1.y : TOP.servo1.y + TOP.servo1.h };
     else if (id === "lcd") p = { x: TOP.lcd.x + { VCC: 18, GND: 84, SDA: 40, SCL: 62 }[pin], y: TOP.lcd.y + 112 };
-    else if (id === "uno") p = { x: UNO1.x + UNO1.w, y: UNO1.y + 30 + { "2":0,"8":1,"6":2,"11":3,"12":4,"13":5,"A0":7,"A4":8,"A5":9,"GND":11 }[pin] * 17 };
+    else if (id === "uno") p = { x: UNO1.x + UNO1.w, y: UNO1.y + 30 + { "2":0,"8":1,"6":2,"11":3,"12":4,"13":5,"A0":7,"A4":8,"A5":9,"5V":10,"GND":11 }[pin] * 17 };
     else if (id.startsWith("ky")) {
       const n = +id.slice(2);
       const r = SPOTS.find(s => s.n === n).sensor;
@@ -173,16 +173,16 @@ const HOLE_NAME = tok => {
 const PIN_NAME = (id, pin) => pin.startsWith("A") ? pin.toUpperCase() : pin.toUpperCase();
 const WIRES = [
   // energía: UNO #2 como fuente regulada
-  ["fuente","+","bb","tp.39","red"],   // placeholder, se sobreescribe abajo
   ["fuente","+","uno2","VIN","red"],
   ["fuente","-","uno2","GND","black"],
-  ["uno2","5V","bb","tp.39","red"],
-  ["uno2","5V","bb","bp.39","red"],
-  ["uno2","GND","bb","tn.39","black"],
+  ["uno2","5V","servo","V+","red"],
   ["uno2","GND","bb","bn.39","black"],
+  ["uno","5V","bb","tp.39","red"],
+  ["uno","GND","bb","bn.2","black"],
+  ["bb","tp.60","bb","bp.60","red"],
+  ["bb","tn.60","bb","bn.60","black"],
   // servo
-  ["servo","V+","bb","tp.49","red"],
-  ["servo","GND","bb","tn.50","black"],
+  ["servo","GND","bb","bn.50","black"],
   ["servo","PWM","bb","48t.a","orange"],
   ["uno","A0","bb","48t.c","orange"],
   // LCD
@@ -215,9 +215,7 @@ const WIRES = [
   ["led3","A","bb","10t.f","gold"],
   ["led3","C","bb","bn.16","black"],
   ["uno","2","bb","2t.h","gold"],
-  ["uno","8","bb","8t.h","gold"],
-  // GND principal común
-  ["uno","GND","bb","bn.2","black"]
+  ["uno","8","bb","8t.h","gold"]
 ].map((c, i) => ({
   i,
   a: A(c[0], c[1]),
@@ -234,9 +232,10 @@ WIRES.shift();
 // abajo = cables de la placa/UNO hacia los componentes de abajo)
 function wirePts(w) {
   const ax = w.a.x, ay = w.a.y, bx = w.b.x, by = w.b.y;
-  const top = ay < 208;                       // pila / UNO#2 / servo / LCD
+  const top = ay < 208;
   const laneY = top ? 130 + (w.i % 10) * 1.5 : 586 + (w.i % 10) * 1.7;
-  const out = top ? 10 : -10;
+  // puentes entre rieles (misma columna): línea recta, sin zigzag
+  if (Math.abs(ax - bx) < 2) return [{x:ax,y:ay},{x:bx,y:by}];
   return [{x:ax,y:ay},{x:ax + (ax > cv.width / 2 ? 22 : -22),y:ay},{x:ax + (ax > cv.width / 2 ? 22 : -22),y:laneY},{x:bx,y:laneY},{x:bx,y:by}];
 }
 // ===== dibujo realista de los componentes =====
@@ -282,7 +281,7 @@ function drawUno(x, y, w, h, isReg) {
   ctx.fillText(isReg ? "solo power — VIN← pila · 5V out" : "sketch: ParkNet (freno auto)", x + 16, y + h / 2 - 4);
   // headers de pines (a la derecha)
   if (!isReg) {
-    const pins = [["D13",6],["D12",5],["D11",4],["D8",3],["D6",2],["D2",1],["A0",7],["A4",8],["A5",9],["GND",11]];
+    const pins = [["D13",6],["D12",5],["D11",4],["D8",3],["D6",2],["D2",1],["A0",7],["A4",8],["A5",9],["5V",10],["GND",11]];
     pins.forEach(([n, i]) => {
       ctx.beginPath(); ctx.arc(x + w - 8, y + 30 + i * 17, 2.6, 0, 7);
       ctx.fillStyle = "#111"; ctx.fill();
@@ -401,7 +400,7 @@ function drawParts() {
   ctx.fillStyle = "#8fd3ff"; ctx.font = "700 11px system-ui"; ctx.textAlign = "center";
   ctx.fillText("NOTAS", NOTE.x + NOTE.w / 2, NOTE.y + 20);
   ctx.fillStyle = "#cfe1ee"; ctx.font = "10px system-ui"; ctx.textAlign = "left";
-  ["UNO #2 = solo energía:", "copia su 5V al riel rojo,", "su GND al riel azul (masa común).", "Nunca toca SDA/SCL ni pines.", "El #1 corre el programa", "y sus pines no alimentan el servo.", "Pila siempre por VIN."].forEach((t, i) =>
+  ["UNO #2 = solo energía:", "VIN ← pila 9V", "5V directos al V+ del servo,", "GND en común con el #1.", "El #1 (R4) alimenta todo lo demás:", "riel rojo desde su pin 5V para", "LCD, sensores y LEDs. Puentes en col 60", "unen rieles sup/inf."].forEach((t, i) =>
     ctx.fillText(t, NOTE.x + 10, NOTE.y + 42 + i * 22));
 }
 function tagAt(p, txt) {
@@ -482,7 +481,7 @@ WIRES.forEach(w => {
   li.dataset.i = w.i;
   li.innerHTML = "<code>" + w.label + "</code>";
   li.onclick = () => select(sel === w.i ? -1 : w.i);
-  ((w.label.startsWith("fuente") || w.label.startsWith("uno2") || (w.label.startsWith("uno") && w.label.includes("GND"))) ? UL : DL).appendChild(li);
+  ((w.i < 8) ? UL : DL).appendChild(li);
 });
 draw();
 </script>

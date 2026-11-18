@@ -128,7 +128,7 @@ function anchorCache() {
     if (id === "fuente") p = { x: TOP.fuente.x + TOP.fuente.w, y: TOP.fuente.y + (pin === "+" ? 18 : 46) };
     else if (id === "uno2") p = { x: TOP.uno2.x + TOP.uno2.w, y: TOP.uno2.y + (pin === "VIN" ? 34 : pin === "5V" ? 60 : 84) };
     else if (id === "servo") p = { x: TOP.servo1.x + TOP.servo1.w * { "V+": .25, "GND": .75, "PWM": .46 }[pin], y: pin === "V+" ? TOP.servo1.y + TOP.servo1.h : pin === "PWM" ? TOP.servo1.y : TOP.servo1.y + TOP.servo1.h };
-    else if (id === "lcd") p = { x: TOP.lcd.x + TOP.lcd.w * { "VCC": .22, "GND": .78, "SDA": 1, "SCL": 1 }[pin], y: (pin === "SDA") ? TOP.lcd.y + 40 : (pin === "SCL") ? TOP.lcd.y + TOP.lcd.h + 18 : (pin === "VCC" ? TOP.lcd.y : TOP.lcd.y + TOP.lcd.h) };
+    else if (id === "lcd") p = { x: TOP.lcd.x + { VCC: 18, GND: 84, SDA: 40, SCL: 62 }[pin], y: TOP.lcd.y + 112 };
     else if (id === "uno") p = { x: UNO1.x + UNO1.w, y: UNO1.y + 30 + { "2":0,"8":1,"6":2,"11":3,"12":4,"13":5,"A0":7,"A4":8,"A5":9,"GND":11 }[pin] * 17 };
     else if (id.startsWith("ky")) {
       const n = +id.slice(2);
@@ -220,44 +220,155 @@ function wirePts(w) {
   const out = top ? 10 : -10;
   return [{x:ax,y:ay},{x:ax + (ax > cv.width / 2 ? 22 : -22),y:ay},{x:ax + (ax > cv.width / 2 ? 22 : -22),y:laneY},{x:bx,y:laneY},{x:bx,y:by}];
 }
-function drawParts() {
-  // fuente
-  for (const [id, r] of Object.entries(TOP)) {
-    if (id === "uno2") {
-      rr(r.x, r.y, r.w, r.h, 10, r.fill, "#00000033", 1.4);
-      ctx.fillStyle = "#ffdf9e"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
-      ctx.fillText("ARDUINO UNO #2", r.x + r.w / 2, r.y + 22);
-      ctx.fillStyle = "#ffe9bd"; ctx.font = "10px system-ui";
-      ctx.fillText("regulador externo", r.x + r.w / 2, r.y + 40);
-      ctx.fillText("VIN ← pila 9V", r.x + r.w / 2, r.y + 58);
-      ctx.fillText("pin 5V → riel rojo", r.x + r.w / 2, r.y + 76);
-      ctx.fillText("GND → riel azul", r.x + r.w / 2, r.y + 92);
-    } else {
-      rr(r.x, r.y, r.w, r.h, 10, r.fill, "#00000033", 1.4);
-      ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "700 13px system-ui";
-      r.name.split("\n").forEach((t, i) => ctx.fillText(t, r.x + r.w / 2, r.y + r.h / 2 - 2 + i * 17));
-    }
+// ===== dibujo realista de los componentes =====
+function drawBattery(x, y) {
+  const g = ctx.createLinearGradient(0, y, 0, y + 66);
+  g.addColorStop(0, "#e04f3f"); g.addColorStop(.5, "#b62e22"); g.addColorStop(1, "#7e1d18");
+  rr(x, y, 112, 50, 8, g, "#5a1512");
+  ctx.fillStyle = "#f5d76e"; ctx.font = "700 15px system-ui"; ctx.textAlign = "center";
+  ctx.fillText("9V", x + 56, y + 21);
+  ctx.fillStyle = "#fff"; ctx.font = "700 9px system-ui";
+  ctx.fillText("BATERÍA 9V", x + 56, y + 37);
+  // bornes + / -
+  ctx.fillStyle = "#d8d8d8"; rr(x - 10, y + 14, 12, 22, 2, "#d8d8d8", "#999");   // borne -
+  ctx.fillStyle = "#d8d8d8"; rr(x + 114, y + 14, 12, 22, 2, "#d8d8d8", "#999");  // borne +
+  ctx.fillStyle = "#333"; ctx.font = "700 14px system-ui";
+  ctx.fillText("−", x - 4, y + 12); ctx.fillText("+", x + 120, y + 12);
+}
+function drawUno(x, y, w, h, isReg) {
+  const g = ctx.createLinearGradient(0, y, 0, y + h);
+  g.addColorStop(0, "#10626e"); g.addColorStop(1, "#0a3f48");
+  rr(x, y, w, h, 10, g, "#062a30", 2);
+  // bornes de montaje
+  for (const [cx, cy] of [[x + 12, y + 12], [x + w - 12, y + 12], [x + 12, y + h - 12], [x + w - 12, y + h - 12]]) {
+    ctx.beginPath(); ctx.arc(cx, cy, 5, 0, 7); ctx.fillStyle = "#0a2b31"; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx, cy, 2.4, 0, 7); ctx.fillStyle = "#c9c9c2"; ctx.fill();
   }
-  // UNO #1
-  rr(UNO1.x, UNO1.y, UNO1.w, UNO1.h, 12, UNO1.fill, "#083e46", 1.5);
-  ctx.fillStyle = "#7ef0ff"; ctx.font = "700 15px system-ui"; ctx.textAlign = "left";
-  ctx.fillText("ARDUINO UNO #1", UNO1.x + 16, UNO1.y + 28);
-  ctx.fillStyle = "#bff3ff"; ctx.font = "11px system-ui";
-  ["pines usados:","D13 → sens P1 · D12 → LED1","D6 → sens P2  · D11 → LED2","D2 → sens P3  · D8 → LED3","A0 → señal SERVO","A4 → LCD SDA · A5 → LCD SCL","GND → riel común"].forEach((t, i) =>
-    ctx.fillText(t, UNO1.x + 16, UNO1.y + 52 + i * 20));
-  ctx.fillStyle = "#f5e6a8"; ctx.fillText("NUNCA: 5V del #1 al servo", UNO1.x + 16, UNO1.y + UNO1.h - 14);
-  // plazas
-  SPOTS.forEach(s => {
-    for (const r of [s.sensor, s.led]) rr(r.x, r.y, r.w, r.h, 10, r.fill, "#00000033", 1.4);
-    ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "700 12px system-ui";
-    s.sensor.name.split("\n").forEach((t, i) => ctx.fillText(t, s.sensor.x + s.sensor.w / 2, s.sensor.y + 32 + i * 16));
-    s.led.name.split("\n").forEach((t, i) => ctx.fillText(t, s.led.x + s.led.w / 2, s.led.y + 32 + i * 16));
-    const rx = s.led.x + s.led.w / 2, ry = s.led.y + s.led.h - 12;
-    ctx.fillStyle = "#d8b97a"; rr(rx - 22, ry - 4, 44, 9, 4.5, "#d8b97a", "#8a6d34", 1.1);
-    ctx.fillStyle = "#7a4a1e"; ["#c0392b","#c0392b","#6e4f16","#c9a227"].forEach((c, i) => ctx.fillRect(rx - 17 + i * 9, ry - 2, 5, 5));
-    ctx.fillStyle = "#333"; ctx.font = "700 9px system-ui";
-    ctx.fillText(s.r, rx, ry + 12);
+  // puerto USB
+  rr(x + 16, y + 12, 60, 40, 4, "#c8cdd4", "#7d8794", 1.5);
+  ctx.fillStyle = "#333"; ctx.font = "700 8px system-ui"; ctx.textAlign = "center";
+  ctx.fillText("USB", x + 46, y + 37);
+  // conector VIN / jack negro
+  rr(x + 16, y + h - 46, 54, 34, 4, "#1b1b1b", "#000", 1.5);
+  ctx.fillStyle = "#333"; ctx.fillText("VIN", x + 43, y + h - 25);
+  // microcontrolador principal
+  ctx.fillStyle = "#22262c"; rr(x + w - 96, y + 24, 74, 58, 4, "#22262c", "#444", 1);
+  ctx.fillStyle = "#3a3f47"; ctx.fillRect(x + w - 90, y + 30, 10, 46);
+  // cristal
+  ctx.fillStyle = "#e8e8e8"; rr(x + w / 2 - 20, y + h / 2 - 10, 40, 20, 4, "#e8e8e8", "#aaa");
+  // texto impreso
+  ctx.fillStyle = "#bff3ff"; ctx.font = "700 12px system-ui"; ctx.textAlign = "left";
+  ctx.fillText("ARDUINO UNO" + (isReg ? " #2" : ""), x + 16, y + h / 2 - 20);
+  ctx.fillStyle = "#8fd3e0"; ctx.font = "8px system-ui";
+  ctx.fillText(isReg ? "solo power — VIN← pila · 5V out" : "sketch: ParkNet (freno auto)", x + 16, y + h / 2 - 4);
+  // headers de pines (a la derecha)
+  if (!isReg) {
+    const pins = [["D13",6],["D12",5],["D11",4],["D8",3],["D6",2],["D2",1],["A0",7],["A4",8],["A5",9],["GND",11]];
+    pins.forEach(([n, i]) => {
+      ctx.beginPath(); ctx.arc(x + w - 8, y + 30 + i * 17, 2.6, 0, 7);
+      ctx.fillStyle = "#111"; ctx.fill();
+      ctx.fillStyle = "#bff3ff"; ctx.font = "7px system-ui"; ctx.textAlign = "right";
+      ctx.fillText(n, x + w - 13, y + 33 + i * 17);
+    });
+  }
+  // LED on / tx / rx
+  ctx.fillStyle = "#2dff6a"; ctx.fillRect(x + w - 24, y + 10, 4, 4);
+}
+function drawServo(x, y) {
+  const g = ctx.createLinearGradient(0, y, 0, y + 74);
+  g.addColorStop(0, "#e88b2a"); g.addColorStop(.5, "#cf6f1c"); g.addColorStop(1, "#a8541a");
+  rr(x, y + 10, 110, 48, 6, g, "#6f3a10", 1.5);
+  rr(x - 12, y + 54, 134, 12, 3, "#e88b2a", "#6f3a10");
+  // eje con bocina blanca
+  ctx.beginPath(); ctx.arc(x + 55, y + 34, 17, 0, 7); ctx.fillStyle = "#f4f4f4"; ctx.fill();
+  ctx.beginPath(); ctx.arc(x + 55, y + 34, 5, 0, 7); ctx.fillStyle = "#333"; ctx.fill();
+  // bocina de cruz
+  ctx.strokeStyle = "#fff"; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(x + 55, y + 22); ctx.lineTo(x + 55, y + 46); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x + 43, y + 34); ctx.lineTo(x + 67, y + 34); ctx.stroke();
+  ctx.fillStyle = "#333"; ctx.font = "700 9px system-ui"; ctx.textAlign = "left";
+  ctx.fillText("TOWER PRO SG90", x + 2, y + 8);
+}
+function drawLCD(x, y) {
+  rr(x, y, 216, 112, 4, "#123a6b", "#0a2440", 1.5);
+  rr(x + 8, y + 16, 200, 68, 2, "#d8eefc", "#6ea8d4", 1.5);
+  ctx.fillStyle = "#0a2440"; ctx.textAlign = "left"; ctx.font = "700 11px monospace";
+  ctx.fillText("LIBRES: 2/2", x + 14, y + 42);
+  ctx.fillText("P1 P2 BARRERA", x + 14, y + 66);
+  ctx.fillStyle = "#fff"; ctx.font = "700 8px system-ui"; ctx.textAlign = "center";
+  ctx.fillText("HD44780 · I2C 0x27", x + 108, y + 106);
+  // pines
+  ["VCC","SDA","SCL","GND"].forEach((t, i) => {
+    ctx.fillStyle = "#222"; ctx.beginPath(); ctx.arc(x + 18 + i * 22, y + 114, 2.4, 0, 7); ctx.fill();
+    ctx.fillStyle = "#bcd"; ctx.font = "8px system-ui";
+    ctx.fillText(t, x + 18 + i * 22, y + 126);
   });
+}
+function drawKY(x, y) {
+  rr(x, y, 108, 88, 4, "#174a7a", "#0d2a47", 1.5);
+  // lentes IR
+  for (const lx of [x + 24, x + 84]) {
+    ctx.beginPath(); ctx.arc(lx, y + 24, 10, 0, 7); ctx.fillStyle = "#2b1a10"; ctx.fill();
+    ctx.beginPath(); ctx.arc(lx, y + 24, 5, 0, 7); ctx.fillStyle = "#3d2a1c"; ctx.fill();
+  }
+  // LM393
+  ctx.fillStyle = "#141414"; ctx.fillRect(x + 40, y + 44, 28, 12);
+  ctx.fillStyle = "#333"; ctx.fillRect(x + 40, y + 44, 5, 12);
+  // potenciómetro azul
+  ctx.fillStyle = "#1c5fb8"; ctx.fillRect(x + 42, y + 60, 26, 10);
+  ctx.beginPath(); ctx.arc(x + 55, y + 65, 4, 0, 7); ctx.fillStyle = "#f2c94c"; ctx.fill();
+  ctx.beginPath(); ctx.arc(x + 55, y + 65, 1.4, 0, 7); ctx.fillStyle = "#333"; ctx.fill();
+  ctx.fillStyle = "#fff"; ctx.font = "700 9px system-ui"; ctx.textAlign = "center";
+  ctx.fillText("KY-033", x + 54, y - 4);
+}
+function drawLED(x, y, dome) {
+  // pata ánodo (larga) a la izquierda, cátodo (corta) a la derecha
+  ctx.strokeStyle = "#d8d8d8"; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(x + 28, y + 26); ctx.lineTo(x + 28, y - 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x + 46, y + 26); ctx.lineTo(x + 46, y + 10); ctx.stroke();
+  // cuerpo
+  const g = ctx.createRadialGradient(x + 37, y + 8, 2, x + 37, y + 22, 44);
+  g.addColorStop(0, dome.lighter); g.addColorStop(1, dome.base);
+  ctx.beginPath();
+  ctx.arc(x + 37, y + 26, 28, Math.PI, 0);
+  ctx.lineTo(x + 65, y + 34); ctx.lineTo(x + 9, y + 34);
+  ctx.closePath();
+  ctx.fillStyle = g; ctx.fill();
+  ctx.strokeStyle = dome.base; ctx.lineWidth = 1.6; ctx.stroke();
+  ctx.fillStyle = "#ffffff88"; ctx.beginPath(); ctx.arc(x + 26, y + 14, 5, 0, 7); ctx.fill();
+}
+function drawResistor(x, y, label) {
+  ctx.strokeStyle = "#c9c9c2"; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 96, y); ctx.stroke();
+  rr(x + 22, y - 8, 52, 16, 7, "#d8b97a", "#8a6d34", 1.4);
+  // bandas: rojo rojo marrón dorado (220 ohm)
+  const bands = ["#c0392b", "#c0392b", "#6e4f16", "#d4af37"];
+  bands.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(x + 29 + i * 11, y - 6, 6, 12); });
+  ctx.fillStyle = "#000"; ctx.font = "700 9px system-ui"; ctx.textAlign = "center";
+  ctx.fillText(label, x + 48, y + 20);
+}
+function drawParts() {
+  // zona superior: pila, UNO #2 (regulador), servo, LCD
+  drawBattery(TOP.fuente.x + 10, TOP.fuente.y);
+  drawUno(TOP.uno2.x, TOP.uno2.y, TOP.uno2.w, TOP.uno2.h, true);
+  drawServo(TOP.servo1.x, TOP.servo1.y + 2);
+  drawLCD(TOP.lcd.x, TOP.lcd.y);
+
+  // UNO #1
+  drawUno(UNO1.x, UNO1.y, UNO1.w, UNO1.h, false);
+
+  // plazas (sensor + LED + resistencia)
+  const LEDS = [
+    { base: "#c0392b", lighter: "#ff8a76" },
+    { base: "#1f9bd1", lighter: "#8ed6ff" },
+    { base: "#d4a017", lighter: "#ffe28a" }
+  ];
+  SPOTS.forEach((s, i) => {
+    drawKY(s.sensor.x, s.sensor.y);
+    drawLED(s.led.x + 8, s.led.y + 20, LEDS[i]);
+    drawResistor(s.led.x + 118, s.led.y + 32, s.r);
+  });
+
   // NOTAS
   rr(NOTE.x, NOTE.y, NOTE.w, NOTE.h, 10, NOTE.fill, "#33465a", 1.4);
   ctx.fillStyle = "#8fd3ff"; ctx.font = "700 11px system-ui"; ctx.textAlign = "center";
@@ -266,7 +377,6 @@ function drawParts() {
   ["UNO #2 = solo energía:", "copia su 5V al riel rojo,", "su GND al riel azul (masa común).", "Nunca toca SDA/SCL ni pines.", "El #1 corre el programa", "y sus pines no alimentan el servo.", "Pila siempre por VIN."].forEach((t, i) =>
     ctx.fillText(t, NOTE.x + 10, NOTE.y + 42 + i * 22));
 }
-
 function drawWires() {
   ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.lineJoin = "round";
   for (const w of WIRES) {

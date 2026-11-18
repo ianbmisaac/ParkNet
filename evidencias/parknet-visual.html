@@ -160,6 +160,17 @@ function anchorCache() {
 }
 const A = anchorCache();
 const C = (c2) => ({ red:"#d33a2c", black:"#20242c", orange:"#e8751a", gold:"#d4a017", green:"#3f9e4f", blue:"#2e7ad6" }[c2]);
+// nombre legible para cada extremo
+const HOLE_NAME = tok => {
+  const rail = tok.match(/^tp\.(\d+)$/); if (rail) return "+5V sup·" + rail[1];
+  const m2 = tok.match(/^tn\.(\d+)$/); if (m2) return "GND sup·" + m2[1];
+  const m3 = tok.match(/^bp\.(\d+)$/); if (m3) return "+5V inf·" + m3[1];
+  const m4 = tok.match(/^bn\.(\d+)$/); if (m4) return "GND inf·" + m4[1];
+  const cell = tok.match(/^(\d+)t\.([a-j])$/);
+  if (cell) return "col" + cell[1] + "·" + cell[2];
+  return tok;
+};
+const PIN_NAME = (id, pin) => pin.startsWith("A") ? pin.toUpperCase() : pin.toUpperCase();
 const WIRES = [
   // energía: UNO #2 como fuente regulada
   ["fuente","+","bb","tp.39","red"],   // placeholder, se sobreescribe abajo
@@ -207,7 +218,15 @@ const WIRES = [
   ["uno","8","bb","8t.h","gold"],
   // GND principal común
   ["uno","GND","bb","bn.2","black"]
-].map((c, i) => ({ i, a: A(c[0], c[1]), b: A(c[2], c[3]), color: C(c[4]), label: c[0] + ":" + c[1] + "  →  " + c[2] + ":" + c[3] }));
+].map((c, i) => ({
+  i,
+  a: A(c[0], c[1]),
+  b: A(c[2], c[3]),
+  color: C(c[4]),
+  label: c[0] + ":" + c[1] + "  →  " + c[2] + ":" + c[3],
+  tagA: c[0] === "bb" ? HOLE_NAME(c[1]) : PIN_NAME(c[0], c[1]),
+  tagB: c[2] === "bb" ? HOLE_NAME(c[3]) : PIN_NAME(c[2], c[3])
+}));
 // quita el placeholder inicial (ya está duplicada la pila->buck)
 WIRES.shift();
 
@@ -377,6 +396,19 @@ function drawParts() {
   ["UNO #2 = solo energía:", "copia su 5V al riel rojo,", "su GND al riel azul (masa común).", "Nunca toca SDA/SCL ni pines.", "El #1 corre el programa", "y sus pines no alimentan el servo.", "Pila siempre por VIN."].forEach((t, i) =>
     ctx.fillText(t, NOTE.x + 10, NOTE.y + 42 + i * 22));
 }
+function tagAt(p, txt) {
+  ctx.font = "700 9px system-ui";
+  const w = ctx.measureText(txt).width + 10;
+  const h = 13;
+  let x = p.x - w / 2, y;
+  if (p.y < 152) y = p.y - h - 4;            // banda superior: etiqueta arriba del pin
+  else if (p.y > 622) y = p.y + 4;           // banda inferior: debajo del pin
+  else y = p.y - h - 4;                      // sobre el tablero: arriba del hueco
+  x = Math.max(2, Math.min(cv.width - w - 2, x));
+  rr(x, y, w, h, 5, "#0d1622ee", "#38bdf844", 0.8);
+  ctx.fillStyle = "#cfe9ff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(txt, x + w / 2, y + h / 2 + 0.5); ctx.textBaseline = "alphabetic";
+}
 function drawWires() {
   ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.lineJoin = "round";
   for (const w of WIRES) {
@@ -391,6 +423,18 @@ function drawWires() {
     ctx.fillStyle = w.color;
     ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, 4.2, 0, 7); ctx.fill();
     ctx.beginPath(); ctx.arc(pts[pts.length - 1].x, pts[pts.length - 1].y, 4.2, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  // etiquetas de pines en ambos extremos de CADA cable (cuando uno está
+  // seleccionado las suyas se destacan en amarillo)
+  for (const w of WIRES) {
+    const emph = sel === -1 || sel === w.i;
+    ctx.globalAlpha = emph ? 1 : 0.18;
+    ctx.strokeStyle = emph ? "#ffd23f" : "#38bdf8";
+    if (sel === w.i) ctx.lineWidth = 1.6; else ctx.lineWidth = sel === -1 ? 0 : 1.2;
+    tagAt(w.a, w.tagA);
+    tagAt(w.b, w.tagB);
+    ctx.lineWidth = 1.4;
   }
   ctx.globalAlpha = 1;
   if (sel >= 0) {

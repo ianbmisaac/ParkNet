@@ -165,9 +165,9 @@
     <div class="card">
       <div class="row"><span>Plazas</span><span id="libres" class="warn">–</span></div>
       <div>
-        <span class="chip" id="p1">P1 (sensor): –</span>
-        <span class="chip" id="p2">P2 (web): –</span>
-        <span class="chip" id="p3">P3: sin datos</span>
+        <span class="chip" id="p1">P1 (D13): –</span>
+        <span class="chip" id="p2">P2 (D6): –</span>
+        <span class="chip" id="p3">P3 (D2): –</span>
         <span class="chip" id="barrChip">Barrera: –</span>
         <span class="chip" id="alertaChip" style="display:none;border-color:#d29922;color:#d29922;animation:pulsa 1s infinite">🚨 AUTO ENTRANDO (slot 1)</span>
         <span class="chip" id="tsTxt" style="border-style:dashed">sin señal</span>
@@ -188,8 +188,8 @@
         <button class="rojo" id="bCerrar">▼ Cerrar barrera</button>
       </div>
       <div class="row" style="margin-top:8px">
-        <button id="bD2">Plaza 2: ocupar/liberar</button>
-        <button id="bD3">Plaza 3: ocupar/liberar</button>
+        <small class="muted">Plazas 2 y 3 ahora físicas (D6 y D2) — el sensor siempre manda.
+        Para pruebas sin auto: usa el botón «Volver a los sensores» del bloque de Tests.</small>
       </div>
       <div class="row" style="margin-top:8px">
         <button id="bLcd1">LCD → fijar FIXMOL</button>
@@ -729,7 +729,7 @@ function conectarMqtt() {
         if (p1Valida) estadoRecibido = true;
         $("libres").textContent = d.libres + " / " + d.total + " libres";
         pinta("p1", (d.ocupadas[0]||0) === 1, "P1 (sensor)");
-        pinta("p2", (d.ocupadas[1]||0) === 1, "P2 (web)");
+        pinta("p2", (d.ocupadas[1]||0) === 1, "P2 (D6)");
         if (d.ocupadas[2] === 0 || d.ocupadas[2] === 1) {
           pinta("p3", d.ocupadas[2] === 1, "P3");
         } else {
@@ -779,8 +779,7 @@ async function soyAdminAhora() {
 
 $("bAbrir").onclick  = () => enviar({ cmd:"barrera", estado:"ABIERTA" });
 $("bCerrar").onclick = () => enviar({ cmd:"barrera", estado:"CERRADA" });
-$("bD2").onclick = () => enviar({ cmd:"toggle", slot:2 });
-$("bD3").onclick = () => enviar({ cmd:"toggle", slot:3 });
+// Plazas 2/3 ahora físicas: el web ya no fuerza estado (el sensor manda).
 $("bLcd1").onclick = () => enviar({ cmd:"lcd", modo:"fixmol" });
 $("bLcd0").onclick = () => enviar({ cmd:"lcd", modo:"datos" });
 $("bSync").onclick = () => enviar({ cmd:"sync" });

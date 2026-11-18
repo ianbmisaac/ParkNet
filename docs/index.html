@@ -513,8 +513,9 @@
       <div class="booking-card" style="margin-bottom:14px" aria-label="Estado en vivo del estacionamiento">
         <h3>Estado en vivo del estacionamiento</h3>
         <div class="live-row">
-          <span class="live-chip" id="mqP1">Plaza 1 (sensor): conectando…</span>
-          <span class="live-chip" id="mqP2">Plaza 2 (web): conectando…</span>
+          <span class="live-chip" id="mqP1">Plaza 1: conectando…</span>
+          <span class="live-chip" id="mqP2">Plaza 2: conectando…</span>
+          <span class="live-chip" id="mqP3">Plaza 3: conectando…</span>
           <span class="live-chip live-info" id="mqBarr">Barrera: –</span>
           <span class="live-chip live-info" id="mqLibres">– libres</span>
         </div>
@@ -1269,12 +1270,13 @@
         el.className = "live-chip " + (ocupada ? "occ" : "libre");
       }
       function mqEstado(d) {
-        mqChip("mqP1", d.ocupadas && d.ocupadas[0] === 1, "Plaza 1 (sensor)");
-        mqChip("mqP2", d.ocupadas && d.ocupadas[1] === 1, "Plaza 2 (web)");
+        mqChip("mqP1", d.ocupadas && d.ocupadas[0] === 1, "Plaza 1");
+        mqChip("mqP2", d.ocupadas && d.ocupadas[1] === 1, "Plaza 2");
+        mqChip("mqP3", d.ocupadas && d.ocupadas[2] === 1, "Plaza 3");
         var b = $("mqBarr");
         if (b) b.textContent = "Barrera: " + (d.barrera || "–");
         var l = $("mqLibres");
-        if (l) l.textContent = (d.libres != null ? d.libres : "–") + " / " + (d.total || 2) + " libres";
+        if (l) l.textContent = (d.libres != null ? d.libres : "–") + " / " + (d.total || 3) + " libres";
         var n = $("mqNota");
         if (n) n.textContent = "Señal de la placa a las " + new Date().toLocaleTimeString() + " (MQTT).";
       }
@@ -1299,7 +1301,7 @@
         mqCli.on("message", function (t, m) {
           if (t === MQ_P) {
             var q = parseInt(m.toString(), 10);
-            if (!isNaN(q) && $("mqLibres")) $("mqLibres").textContent = q + " / 2 libres";
+            if (!isNaN(q) && $("mqLibres")) $("mqLibres").textContent = q + " / 3 libres";
             return;
           }
           if (t === MQ_E) { try { mqEstado(JSON.parse(m.toString())); } catch (e) {} }

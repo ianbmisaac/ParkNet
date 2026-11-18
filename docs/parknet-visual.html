@@ -2,22 +2,22 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>ParkNet — protoboard 830 pts, montaje completo (3 plazas)</title>
+<title>ParkNet — protoboard 830 pts (UNO #2 de potencia)</title>
 <style>
   :root { --bg:#0a1420; --panel:#101f2b; --ink:#dce9f2; --mut:#7e94a8; --acc:#38bdf8; --acc2:#ffd23f; }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--ink); font-family:"Segoe UI",system-ui,sans-serif; }
   header { padding:12px 22px 8px; display:flex; gap:16px; align-items:baseline; flex-wrap:wrap; }
-  h1 { font-size:1rem; margin:0; color:#fff; }
+  h1 { font-size:.98rem; margin:0; color:#fff; }
   header span { color:var(--mut); font-size:.8rem; }
-  main { display:grid; grid-template-columns:minmax(460px,1fr) 370px; gap:14px; padding:0 22px 20px; }
-  @media (max-width:1100px) { main { grid-template-columns:1fr; } }
+  main { display:grid; grid-template-columns:minmax(500px,1fr) 360px; gap:14px; padding:0 22px 20px; }
+  @media (max-width:1120px) { main { grid-template-columns:1fr; } }
   #stage { background:#131a24; border-radius:14px; border:1px solid #2a3d4d; overflow:auto; padding:10px; }
   canvas { display:block; background:#f2ecdd; border-radius:10px; }
   aside { background:var(--panel); border-radius:14px; padding:14px; max-height:100%; overflow:auto; }
   aside h2 { font-size:.78rem; letter-spacing:.06em; text-transform:uppercase; color:var(--mut); margin:2px 0 10px; }
   aside h3 { font-size:.74rem; color:var(--acc); margin:12px 0 6px; letter-spacing:.05em; }
-  ol { font-size:.78rem; color:#c9d6df; padding-left:1.2rem; }
+  ol { font-size:.76rem; color:#c9d6df; padding-left:1.2rem; }
   ol li { padding:2px 6px; border-radius:6px; line-height:1.5; cursor:pointer; border-left:3px solid transparent; }
   ol li:hover { background:#16222d; }
   ol li.on { background:#132533; color:#fff; border-left-color:#ffd23f; }
@@ -27,31 +27,31 @@
 </head>
 <body>
 <header>
-  <h1>ParkNet — Tablero de la feria (3 plazas, 3 sensores KY-033, 3 LEDs + resistencias)</h1>
-  <span>El cableado es fiel a la placa: 3 sensores en D13/D6/D2 y 3 LEDs en D12/D11/D8. El 3er sensor y el 3er LED son el «futuro P3» — todavía no están cableados al firmware.</span>
+  <h1>ParkNet — feria: pila 9V al UNO #2 (regulador externo) → rieles del servo</h1>
+  <span>La pila NUNCA toca la placa ni el servo directo. El UNO #2 copia su pin 5V al riel rojo (con su GND al riel azul). UNO #1 con sus sensores/LEDs/I2C de siempre.</span>
 </header>
 <main>
-  <div id="stage"><canvas id="cv" width="1420" height="848" role="img" aria-label="Montaje completo del protoboard"></canvas></div>
+  <div id="stage"><canvas id="cv" width="1456" height="892" role="img" aria-label="Montaje completo del protoboard"></canvas></div>
   <aside>
     <h2>Lista maestra de cables</h2>
     <h3>Energía</h3>
     <ol id="lista"></ol>
-    <h3>Datos de los pines</h3>
+    <h3>Señales de datos</h3>
     <ol id="lista2"></ol>
-    <div class="note">Resistencias: 220 Ω en serie con el ánodo de cada LED (banda roja-roja-marrón-dorado). El servo no toca el 5V del Arduino: se alimenta del rail rojo que viene de la pila (9V→BUCK→5V). GND común SIEMPRE: rail azul = GND de pila + GND de UNO + GND de servo.</div>
+    <div class="note">Clic en un cable de la lista (o sobre él en el mapa) para resaltarlo. Energía: pila 9V → VIN del UNO #2 → 5V al riel rojo (y el 1er 5V también al riel inferior) · GND común. Datos: D13/D6/D2 (sensores) · D12/D11/D8 (LEDs vía R) · A0 (servo) · A4/A5 (LCD).</div>
   </aside>
 </main>
 <script>
 const cv = document.getElementById("cv");
 const ctx = cv.getContext("2d");
 
-// ===== geometría =====
-const BOARD = { x: 24, y: 96, w: 1372, h: 418, r: 20 };
+// ===== geometría: banda fuente arriba · protoboard en el medio · componentes abajo =====
+const BOARD = { x: 24, y: 152, w: 1408, h: 428, r: 19 };
 const NCOLS = 60;
-const colX = c => 88 + (c - 1) * 21.9;             // 88..1384 dentro del tablero
-const RAIL = { tp: 110, tn: 146, bp: 452, bn: 488 };  // centros y de los rieles
-const rowsA = [0,1,2,3,4].map(i => 188 + i * 30);     // 188..308
-const rowsB = [0,1,2,3,4].map(i => 348 + i * 26);     // 348..452
+const colX = c => 92 + (c - 1) * 22.4;                       // 92..1414 dentro del tablero
+const RAIL = { tp: 168, tn: 202, bn: 524, bp: 486 };          // centros de tira (+ arriba izq / abajo izq)
+const rowsA = [0,1,2,3,4].map(i => 236 + i * 30);             // 236..356
+const rowsB = [0,1,2,3,4].map(i => 390 + i * 22);             // 390..478
 const rowIndex = { a:0,b:1,c:2,d:3,e:4, f:0,g:1,h:2,i:3,j:4 };
 
 function rr(x, y, w, h, r, fill, stroke, lw) {
@@ -64,18 +64,18 @@ function hole(x, y) {
   ctx.beginPath(); ctx.arc(x, y, 1.8, 0, 7); ctx.fillStyle = "#2b2b26"; ctx.fill();
 }
 function railStrip(x, y, w, tint, label) {
-  rr(x, y - 9, w, 18, 4, "#fde8d8", "#cfcabf", 1);
-  ctx.fillStyle = tint; ctx.fillRect(x + 3, y + 2, w - 6, 4);
+  rr(x, y - 8, w, 18, 4, "#fde9d8", "#cfcabf", 1);
+  ctx.fillStyle = tint; ctx.fillRect(x + 3, y + 3, w - 6, 4);
   ctx.fillStyle = tint; ctx.font = "700 10px system-ui"; ctx.textAlign = "left";
-  ctx.fillText(label, x + 6, y - 1);
+  ctx.fillText(label, x + 6, y);
 }
 function drawBoard() {
   ctx.fillStyle = "#f2ecdd"; ctx.fillRect(0, 0, cv.width, cv.height);
-  ctx.fillStyle = "#0006"; rr(BOARD.x + 6, BOARD.y + 10, BOARD.w, BOARD.h, BOARD.r, "#00000050", null);
+  ctx.fillStyle = "#00000050"; rr(BOARD.x + 6, BOARD.y + 10, BOARD.w, BOARD.h, BOARD.r, "#00000044", null);
   const g = ctx.createLinearGradient(0, BOARD.y, 0, BOARD.y + BOARD.h);
   g.addColorStop(0, "#ffffff"); g.addColorStop(.5, "#f4f4ef"); g.addColorStop(1, "#e9e9e2");
   rr(BOARD.x, BOARD.y, BOARD.w, BOARD.h, BOARD.r, g, "#c9c9c2", 1.5);
-  // rieles (2 arriba + 2 abajo, cortados en el centro)
+  // rieles (rojos + azules, arriba y abajo, cortados al centro)
   railStrip(BOARD.x + 12, RAIL.tp, BOARD.w / 2 - 18, "#e2571e", "+5V");
   railStrip(BOARD.x + BOARD.w / 2 + 6, RAIL.tp, BOARD.w / 2 - 18, "#e2571e", "+5V");
   railStrip(BOARD.x + 12, RAIL.tn, BOARD.w / 2 - 18, "#2e7ad6", "GND");
@@ -86,235 +86,213 @@ function drawBoard() {
   railStrip(BOARD.x + BOARD.w / 2 + 6, RAIL.bn, BOARD.w / 2 - 18, "#2e7ad6", "GND");
   for (let c = 1; c <= NCOLS; c++)
     for (const y of [RAIL.tp, RAIL.tn, RAIL.bp, RAIL.bn]) hole(colX(c), y);
-  // matriz a-e / f-j con ranura
   for (const arr of [rowsA, rowsB])
-    for (const y of arr) for (let c = 1; c <= NCOLS; c++) hole(colX(c), y);
-  ctx.fillStyle = "#d9d9d2"; ctx.fillRect(BOARD.x + 4, 322, BOARD.w - 8, 9);
-  ctx.fillStyle = "#b5b5ad"; ctx.fillRect(BOARD.x + 4, 325, BOARD.w - 8, 2);
-  // números y letras
+    for (const y of arr) for (const c2 of Array.from({length:NCOLS},(_,i)=>i+1)) hole(colX(c2), y);
+  ctx.fillStyle = "#d9d9d2"; ctx.fillRect(BOARD.x + 4, 362, BOARD.w - 8, 9);
+  ctx.fillStyle = "#b5b5ad"; ctx.fillRect(BOARD.x + 4, 365, BOARD.w - 8, 2);
   ctx.fillStyle = "#9a9a91"; ctx.font = "10px system-ui"; ctx.textAlign = "center";
-  for (let c = 5; c <= NCOLS; c += 5) { ctx.fillText(String(c), colX(c), BOARD.y + 18); ctx.fillText(String(c), colX(c), BOARD.y + BOARD.h - 6); }
-  ctx.font = "700 10px system-ui"; ctx.textAlign = "left";
-  "abcde".split("").forEach((l, i) => ctx.fillText(l, BOARD.x + BOARD.w - 12, rowsA[i] + 3.5));
-  "fghij".split("").forEach((l, i) => ctx.fillText(l, BOARD.x + BOARD.w - 12, rowsB[i] + 3.5));
-}
-function gridHole(col, row) {
-  if (row === "tp") return { x: colX(col), y: RAIL.tp };
-  if (row === "tn") return { x: colX(col), y: RAIL.tn };
-  if (row === "bp") return { x: colX(col), y: RAIL.bp };
-  if (row === "bn") return { x: colX(col), y: RAIL.bn };
-  const r = rowIndex[row];
-  const arr = "abcde".includes(row) ? rowsA : rowsB;
-  return { x: colX(col), y: arr[r] };
+  for (let c = 5; c <= NCOLS; c += 5) { ctx.fillText(String(c), colX(c), BOARD.y + 16); ctx.fillText(String(c), colX(c), BOARD.y + BOARD.h - 6); }
+  ctx.textAlign = "left"; ctx.font = "700 10px system-ui";
+  "abcde".split("").forEach((l, i) => ctx.fillText(l, BOARD.x + BOARD.w - 14, rowsA[i] + 4));
+  "fghij".split("").forEach((l, i) => ctx.fillText(l, BOARD.x + BOARD.w - 14, rowsB[i] + 4));
 }
 
-// ===== piezas =====
-const P = {
-  fuente: { x: 40,  y: 16,  w: 128, h: 56, fill: "#c94f43", name: "PILA 9V" },
-  buck:   { x: 212, y: 12,  w: 168, h: 62, fill: "#1a1f27", name: "BUCK\n9V->5.0V" },
-  servo1: { x: 1180,y: 6,   w: 172, h: 78, fill: "#b8c3cd", name: "SERVO\nSG90" },
-  uno:    { x: 20,  y: 546, w: 322, h: 230, fill: "#0f5f6b", name: "" }
+// ===== piezas: zona superior (fuente) =====
+const TOP = {
+  fuente: { x: 62,  y: 26,  w: 128, h: 66, fill: "#c94f43", name: "PILA 9V" },
+  uno2:   { x: 248, y: 12,  w: 258, h: 96, fill: "#59431a", name: "ARDUINO UNO #2", sub: "regulador: VIN ← pila · 5V → riel y GND común" },
+  servo1: { x: 568, y: 6,   w: 172, h: 88, fill: "#b8c3cd", name: "SERVO\nSG90" },
+  lcd:    { x: 780, y: 14,  w: 218, h: 112, fill: "#3da65b", name: "LCD 1602\n(I2C)" }
 };
-// 3 plazas: cada una con sensor KY-033 + LED + resistencia
+// ===== piezas: zona inferior (componentes) =====
+const UNO1 = { x: 36, y: 640, w: 338, h: 222, fill: "#0f5f6b" };
 const SPOTS = [
-  { n: 1, sensor: { x: 388, y: 546, w: 118, h: 108, fill: "#4b86c5", name: "KY-033\n(P1 físico)" },
-          led:    { x: 546, y: 546, w: 88,  h: 108, fill: "#3aa653", name: "LED 1\n(P1)" },
+  { n: 1, sensor: { x: 424, y: 640, w: 116, h: 104, fill: "#4b86c5", name: "KY-033\nP1 físico" },
+          led:    { x: 578, y: 640, w: 88,  h: 104, fill: "#3aa653", name: "LED 1\n(P1)" },
           pinS: 13, pinL: 12, r: "R1 220Ω" },
-  { n: 2, sensor: { x: 664, y: 546, w: 118, h: 108, fill: "#4b86c5", name: "KY-033\n(P2)" },
-          led:    { x: 822, y: 546, w: 88,  h: 108, fill: "#3aa653", name: "LED 2\n(P2)" },
+  { n: 2, sensor: { x: 704, y: 640, w: 116, h: 104, fill: "#4b86c5", name: "KY-033\n(P2)" },
+          led:    { x: 858, y: 640, w: 88,  h: 104, fill: "#3aa653", name: "LED 2\n(P2)" },
           pinS: 6, pinL: 11, r: "R2 220Ω" },
-  { n: 3, sensor: { x: 940, y: 546, w: 118, h: 108, fill: "#4b86c5", name: "KY-033\n(P3 futuro)" },
-          led:    { x: 1098,y: 546, w: 88,  h: 108, fill: "#3aa653", name: "LED 3\n(P3)" },
+  { n: 3, sensor: { x: 984, y: 640, w: 116, h: 104, fill: "#4b86c5", name: "KY-033\n(P3 próximamente)" },
+          led:    { x: 1138,y: 640, w: 88,  h: 104, fill: "#3aa653", name: "LED 3\n(P3)" },
           pinS: 2, pinL: 8,  r: "R3 220Ω" }
 ];
-const LCD = { x: 1182, y: 300, w: 190, h: 118, fill: "#3da65b", name: "LCD 1602\n(I2C)" };
-// posiciones de pines dentro de cada pieza (usadas por los cables)
-const PINS = {
-  "ky1:VCC": [ .5, 0, 't' ], "ky1:GND": [ .75, 0, 't' ], "ky1:OUT": [ 1, .55, 'r' ],
-  "led1:A":  [ .4, 0, 't' ], "led1:C":  [ .75, 0, 't' ],
-  "ky2:VCC": [ .5, 0, 't' ], "ky2:GND": [ .75, 0, 't' ], "ky2:OUT": [ 1, .55, 'r' ],
-  "led2:A":  [ .4, 0, 't' ], "led2:C":  [ .75, 0, 't' ],
-  "ky3:VCC": [ .5, 0, 't' ], "ky3:GND": [ .75, 0, 't' ], "ky3:OUT": [ 1, .55, 'r' ],
-  "led3:A":  [ .4, 0, 't' ], "led3:C":  [ .75, 0, 't' ],
-  "servo:V+":   [ .25, 1, 'b' ], "servo:GND":  [ .75, 1, 'b' ], "servo:PWM": [ .38, 0, 't' ],
-  "lcd:VCC": [ .25, 0, 't' ], "lcd:GND": [ .75, 0, 't' ], "lcd:SDA": [ 1, .35, 'r' ], "lcd:SCL": [ 1, .65, 'r' ],
-  "fuente:+": [ 1, .3, 'r' ], "fuente:-": [ 1, .7, 'r' ],
-  "buck:IN+": [ 0, .3, 'l' ], "buck:IN-": [ 0, .7, 'l' ], "buck:OUT+":[ 1, .3, 'r' ], "buck:OUT-":[ 1, .7, 'r' ],
-  "uno:GND.1": [ 1, .75, 'r' ], "uno:A0": [ 1, .25, 'r' ], "uno:A4": [ 1, .375, 'r' ], "uno:A5": [ 1, .5, 'r' ],
-  "uno:13": [ 1, .875, 'r' ], "uno:12": [ 1, .25, 'r' ], "uno:11": [ 1, .5, 'r' ], "uno:8": [ 1, .625, 'r' ], "uno:6": [ 1, .75, 'r' ], "uno:2": [ 1, .125, 'r' ]
-};
+const NOTE = { x: 1252, y: 640, w: 176, h: 222, fill: "#223240", name: "NOTAS" };
 
-function pinXY(id, pin) {
-  if (id === "uno") return { x: P.uno.x + P.uno.w, y: P.uno.y + 40 + ({ "13":6,"12":0,"11":0,"6":3,"8":4,"2":6 }[pin] ?? 7) * 24, label: pin };
-  let r;
-  if (id === "fuente") r = P.fuente;
-  else if (id === "buck") r = P.buck;
-  else if (id === "servo") r = P.servo1;
-  else if (id === "lcd") r = LCD;
-  else r = SPOTS.map(s => ({ k: "ky" + s.n, r: s.sensor })).find(o => o.k === id);
-  return null; // se calcula abajo
-}
-
-function partPin(key) {
-  const [id, pin] = key.split(":");
-  // pie de componente por zona
-  let r;
-  if (id === "fuente") r = P.fuente;
-  else if (id === "buck") r = P.buck;
-  else if (id === "servo") r = P.servo1;
-  else if (id === "lcd") r = LCD;
-  else {
-    const m = SPOTS.find(s => key.startsWith("ky" + s.n));
-    const l = SPOTS.find(s => key.startsWith("led" + s.n));
-    if (m && key.startsWith("ky")) r = m.sensor; else if (l) r = l.led;
-  }
-  if (id === "uno") {
-    const order = { "2":0, "8":1, "6":2, "11":3, "12":4, "13":5, "A0":7, "A4":8, "A5":9, "GND.1":11 };
-    const i = order[pin] ?? 11;
-    return { x: P.uno.x + P.uno.w, y: P.uno.y + 30 + i * 17, label: key };
-  }
-  if (!r) return { x: 0, y: 0, label: key };
-  const o = PINS[key];
-  let x = o[0] * r.w + r.x, y;
-  if (o[2] === 't' || o[2] === 'b') { y = r.y + r.h * o[1]; }
-  else if (o[2] === 'r') { x = r.x + r.w; y = r.y + r.h * o[1]; }
-  else { x = r.x; y = r.y + r.h * o[1]; }
-  return { x, y, label: key };
-}
-function anchorFor(end) {
-  if (end.startsWith("bb:")) {
-    const id = end.slice(3);
-    const rail = id.match(/^(tp|tn|bp|bn)\.(\d+)$/);
-    if (rail) {
-      const c = +rail[2], row = rail[1];
-      const map = { tp: RAIL.tp, tn: RAIL.tn, bp: RAIL.bp, bn: RAIL.bn };
-      return { x: colX(c), y: map[row] };
+function anchorCache() {
+  const cache = {};
+  function A(id, pin) {
+    const key = id + ":" + pin;
+    if (cache[key]) return cache[key];
+    let p;
+    if (id === "fuente") p = { x: TOP.fuente.x + TOP.fuente.w, y: TOP.fuente.y + (pin === "+" ? 18 : 46) };
+    else if (id === "uno2") p = { x: TOP.uno2.x + TOP.uno2.w, y: TOP.uno2.y + (pin === "VIN" ? 34 : pin === "5V" ? 60 : 84) };
+    else if (id === "servo") p = { x: TOP.servo1.x + TOP.servo1.w * { "V+": .25, "GND": .75, "PWM": .46 }[pin], y: pin === "V+" ? TOP.servo1.y + TOP.servo1.h : pin === "PWM" ? TOP.servo1.y : TOP.servo1.y + TOP.servo1.h };
+    else if (id === "lcd") p = { x: TOP.lcd.x + TOP.lcd.w * { "VCC": .22, "GND": .78, "SDA": 1, "SCL": 1 }[pin], y: (pin === "SDA") ? TOP.lcd.y + 40 : (pin === "SCL") ? TOP.lcd.y + TOP.lcd.h + 18 : (pin === "VCC" ? TOP.lcd.y : TOP.lcd.y + TOP.lcd.h) };
+    else if (id === "uno") p = { x: UNO1.x + UNO1.w, y: UNO1.y + 30 + { "2":0,"8":1,"6":2,"11":3,"12":4,"13":5,"A0":7,"A4":8,"A5":9,"GND":11 }[pin] * 17 };
+    else if (id.startsWith("ky")) {
+      const n = +id.slice(2);
+      const r = SPOTS.find(s => s.n === n).sensor;
+      p = { x: r.x + r.w * ({ VCC: .4, GND: .78, OUT: 1 }[pin]), y: pin === "OUT" ? r.y + r.h * .5 : r.y };
     }
-    const cell = id.match(/^(\d+)t?\.([a-j])$/);
-    if (cell) {
-      const c = +cell[1], ch = cell[2];
-      const r = rowIndex[ch];
-      const arr = "abcde".includes(ch) ? rowsA : rowsB;
-      return { x: colX(c), y: arr[r] };
+    else if (id.startsWith("led")) {
+      const n = +id.slice(3);
+      const r = SPOTS.find(s => s.n === n).led;
+      p = { x: r.x + r.w * ({ A: .35, C: .7 }[pin]), y: r.y };
     }
-    return { x: 0, y: 0 };
+    else if (id === "bb") {
+      const m = pin.match(/^(tp|tn|bp|bn)\.(\d+)$/);
+      if (m) {
+        const map = { tp: RAIL.tp, tn: RAIL.tn, bp: RAIL.bp, bn: RAIL.bn };
+        p = { x: colX(+m[2]), y: map[m[1]] };
+      } else {
+        const cell = pin.match(/^(\d+)t?\.([a-j])$/);
+        const cc = +cell[1], ch = cell[2];
+        const r = rowIndex[ch];
+        const arr = "abcde".includes(ch) ? rowsA : rowsB;
+        p = { x: colX(cc), y: arr[r] };
+      }
+    }
+    cache[key] = p;
+    return p;
   }
-  return partPin(end);
+  return A;
 }
-
+const A = anchorCache();
+const C = (c2) => ({ red:"#d33a2c", black:"#20242c", orange:"#e8751a", gold:"#d4a017", green:"#3f9e4f", blue:"#2e7ad6" }[c2]);
 const WIRES = [
-  // energía
-  ["fuente:+", "buck:IN+", "red"],
-  ["fuente:-", "buck:IN-", "black"],
-  ["buck:OUT+", "bb:tp.39", "red"],
-  ["buck:OUT-", "bb:tn.39", "black"],
-  ["uno:GND.1", "bb:tn.2", "black"],
-  // plaza 1
-  ["ky1:VCC", "bb:tp.3", "red"],
-  ["ky1:GND", "bb:tn.3", "black"],
-  ["ky1:OUT", "bb:2t.a", "gold"],
-  ["led1:A",  "bb:11t.a", "gold"],
-  ["led1:C",  "bb:tn.10", "black"],
-  // plaza 2
-  ["ky2:VCC", "bb:tp.6", "red"],
-  ["ky2:GND", "bb:tn.7", "black"],
-  ["ky2:OUT", "bb:6t.a", "gold"],
-  ["led2:A",  "bb:26t.a", "gold"],
-  ["led2:C",  "bb:tn.25", "black"],
-  // plaza 3
-  ["ky3:VCC", "bb:tp.12", "red"],
-  ["ky3:GND", "bb:tn.13", "black"],
-  ["ky3:OUT", "bb:3t.a", "gold"],
-  ["led3:A",  "bb:8t.a", "gold"],
-  ["led3:C",  "bb:tn.16", "black"],
+  // energía: UNO #2 como fuente regulada
+  ["fuente","+","bb","tp.39","red"],   // placeholder, se sobreescribe abajo
+  ["fuente","+","uno2","VIN","red"],
+  ["fuente","-","uno2","GND","black"],
+  ["uno2","5V","bb","tp.39","red"],
+  ["uno2","5V","bb","bp.39","red"],
+  ["uno2","GND","bb","tn.39","black"],
+  ["uno2","GND","bb","bn.39","black"],
   // servo
-  ["servo:V+",  "bb:tp.49", "red"],
-  ["servo:GND", "bb:tn.50", "black"],
-  ["servo:PWM", "bb:48t.a", "orange"],
-  ["uno:A0",    "bb:48t.c", "orange"],
+  ["servo","V+","bb","tp.49","red"],
+  ["servo","GND","bb","tn.50","black"],
+  ["servo","PWM","bb","48t.a","orange"],
+  ["uno","A0","bb","48t.c","orange"],
   // LCD
-  ["lcd:VCC", "bb:tp.50", "red"],
-  ["lcd:GND", "bb:tn.50", "black"],
-  ["lcd:SDA", "bb:55t.a", "green"],
-  ["uno:A4",  "bb:55t.d", "green"],
-  ["lcd:SCL", "bb:56t.a", "blue"],
-  ["uno:A5",  "bb:56t.d", "blue"],
-  // pines a placa
-  ["uno:13", "bb:2t.a", "gold"],
-  ["uno:6",  "bb:6t.c", "gold"],
-  ["uno:2",  "bb:3t.c", "gold"],
-  ["uno:12", "bb:11t.d", "gold"],
-  ["uno:11", "bb:26t.d", "gold"],
-  ["uno:8",  "bb:8t.d", "gold"]
-].map((c, i) => ({ i, a: anchorFor(c[0]), b: anchorFor(c[1]), color: ({ red:"#d33a2c", black:"#20242c", orange:"#e8751a", gold:"#d4a017", green:"#3f9e4f", blue:"#2e7ad6" })[c[2]], label: c[0] + "  →  " + c[1] }));
+  ["lcd","VCC","bb","tp.50","red"],
+  ["lcd","GND","bb","tn.50","black"],
+  ["lcd","SDA","bb","55t.a","green"],
+  ["uno","A4","bb","55t.d","green"],
+  ["lcd","SCL","bb","56t.a","blue"],
+  ["uno","A5","bb","56t.d","blue"],
+  // plaza 1
+  ["ky1","VCC","bb","bp.3","red"],
+  ["ky1","GND","bb","bn.3","black"],
+  ["ky1","OUT","bb","3t.f","gold"],
+  ["led1","A","bb","11t.f","gold"],
+  ["led1","C","bb","bn.11","black"],
+  ["uno","13","bb","3t.h","gold"],
+  ["uno","12","bb","11t.h","gold"],
+  // plaza 2
+  ["ky2","VCC","bb","bp.6","red"],
+  ["ky2","GND","bb","bn.7","black"],
+  ["ky2","OUT","bb","6t.f","gold"],
+  ["led2","A","bb","26t.f","gold"],
+  ["led2","C","bb","bn.25","black"],
+  ["uno","6","bb","6t.h","gold"],
+  ["uno","11","bb","26t.h","gold"],
+  // plaza 3
+  ["ky3","VCC","bb","bp.12","red"],
+  ["ky3","GND","bb","bn.13","black"],
+  ["ky3","OUT","bb","2t.f","gold"],
+  ["led3","A","bb","8t.f","gold"],
+  ["led3","C","bb","bn.16","black"],
+  ["uno","2","bb","2t.h","gold"],
+  ["uno","8","bb","8t.h","gold"],
+  // GND principal común
+  ["uno","GND","bb","bn.2","black"]
+].map((c, i) => ({ i, a: A(c[0], c[1]), b: A(c[2], c[3]), color: C(c[4]), label: c[0] + ":" + c[1] + "  →  " + c[2] + ":" + c[3] }));
+// quita el placeholder inicial (ya está duplicada la pila->buck)
+WIRES.shift();
 
-function drawParts() {
-  for (const r of [P.fuente, P.buck, P.servo1]) {
-    rr(r.x, r.y, r.w, r.h, 10, r.fill, "#00000033", 1.5);
-    ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "700 13px system-ui";
-    r.name.split("\n").forEach((t, i) => ctx.fillText(t, r.x + r.w / 2, r.y + r.h / 2 - 2 + i * 16));
-  }
-  // UNO
-  rr(P.uno.x, P.uno.y, P.uno.w, P.uno.h, 12, P.uno.fill, "#083e46", 1.5);
-  ctx.fillStyle = "#7ef0ff"; ctx.font = "700 15px system-ui"; ctx.textAlign = "left";
-  ctx.fillText("ARDUINO UNO R4 WiFi", P.uno.x + 16, P.uno.y + 28);
-  ctx.fillStyle = "#bff3ff"; ctx.font = "11px system-ui";
-  ["pines usados:","D13 → sens P1 · D12 → LED1","D6 → sens P2  · D11 → LED2","D2 → sens P3  · D8 → LED3","A0 → señal SERVO","A4 → LCD SDA · A5 → LCD SCL","GND → riel común"].forEach((t, i) =>
-    ctx.fillText(t, P.uno.x + 16, P.uno.y + 52 + i * 20));
-  ctx.fillStyle = "#f5e6a8"; ctx.fillText("NUNCA: 5V del Arduino → servo", P.uno.x + 16, P.uno.y + P.uno.h - 14);
-  // plazas (sensor + LED)
-  SPOTS.forEach(s => {
-    for (const r of [s.sensor, s.led]) { rr(r.x, r.y, r.w, r.h, 10, r.fill, "#00000033", 1.4); }
-    ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "700 12px system-ui";
-    s.sensor.name.split("\n").forEach((t, i) => ctx.fillText(t, s.sensor.x + s.sensor.w / 2, s.sensor.y + 34 + i * 17));
-    s.led.name.split("\n").forEach((t, i) => ctx.fillText(t, s.led.x + s.led.w / 2, s.led.y + 34 + i * 17));
-    // resistencia 220 Ω en serie con el LED
-    const rx = s.led.x + s.led.w / 2, ry = s.led.y + s.led.h - 18;
-    ctx.fillStyle = "#d8b97a"; rr(rx - 24, ry - 5, 48, 10, 5, "#d8b97a", "#8a6d34", 1.2);
-    ctx.fillStyle = "#7a4a1e"; ["#c0392b","#c0392b","#6e4f16","#c9a227"].forEach((c, i) => ctx.fillRect(rx - 18 + i * 10, ry - 3, 5, 6));
-    ctx.fillStyle = "#333"; ctx.font = "700 9px system-ui"; ctx.textAlign = "center";
-    ctx.fillText(s.r, rx, ry + 16);
-  });
-  // LCD
-  rr(LCD.x, LCD.y, LCD.w, LCD.h, 10, LCD.fill, "#00000033", 1.4);
-  ctx.fillStyle = "#fff"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
-  LCD.name.split("\n").forEach((t, i) => ctx.fillText(t, LCD.x + LCD.w / 2, LCD.y + 46 + i * 18));
-}
-
-// guiado ordenado: vertical → horizontal por LANES distintas → vertical hasta el hueco/pin
+// guiado ordenado en carriles (arriba de la placa = cables del bloque superior;
+// abajo = cables de la placa/UNO hacia los componentes de abajo)
 function wirePts(w) {
   const ax = w.a.x, ay = w.a.y, bx = w.b.x, by = w.b.y;
-  const midX1 = (ax + 60) * .8 + ax * .2;
-  const laneY = 534 - (w.i % 12) * 5.5;
-  return [{x:ax,y:ay},{x:midX1,y:ay},{x:midX1,y:laneY},{x:bx,y:laneY},{x:bx,y:by}];
+  const top = ay < 208;                       // pila / UNO#2 / servo / LCD
+  const laneY = top ? 130 + (w.i % 10) * 1.5 : 586 + (w.i % 10) * 1.7;
+  const out = top ? 10 : -10;
+  return [{x:ax,y:ay},{x:ax + (ax > cv.width / 2 ? 22 : -22),y:ay},{x:ax + (ax > cv.width / 2 ? 22 : -22),y:laneY},{x:bx,y:laneY},{x:bx,y:by}];
 }
+function drawParts() {
+  // fuente
+  for (const [id, r] of Object.entries(TOP)) {
+    if (id === "uno2") {
+      rr(r.x, r.y, r.w, r.h, 10, r.fill, "#00000033", 1.4);
+      ctx.fillStyle = "#ffdf9e"; ctx.font = "700 13px system-ui"; ctx.textAlign = "center";
+      ctx.fillText("ARDUINO UNO #2", r.x + r.w / 2, r.y + 22);
+      ctx.fillStyle = "#ffe9bd"; ctx.font = "10px system-ui";
+      ctx.fillText("regulador externo", r.x + r.w / 2, r.y + 40);
+      ctx.fillText("VIN ← pila 9V", r.x + r.w / 2, r.y + 58);
+      ctx.fillText("pin 5V → riel rojo", r.x + r.w / 2, r.y + 76);
+      ctx.fillText("GND → riel azul", r.x + r.w / 2, r.y + 92);
+    } else {
+      rr(r.x, r.y, r.w, r.h, 10, r.fill, "#00000033", 1.4);
+      ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "700 13px system-ui";
+      r.name.split("\n").forEach((t, i) => ctx.fillText(t, r.x + r.w / 2, r.y + r.h / 2 - 2 + i * 17));
+    }
+  }
+  // UNO #1
+  rr(UNO1.x, UNO1.y, UNO1.w, UNO1.h, 12, UNO1.fill, "#083e46", 1.5);
+  ctx.fillStyle = "#7ef0ff"; ctx.font = "700 15px system-ui"; ctx.textAlign = "left";
+  ctx.fillText("ARDUINO UNO #1", UNO1.x + 16, UNO1.y + 28);
+  ctx.fillStyle = "#bff3ff"; ctx.font = "11px system-ui";
+  ["pines usados:","D13 → sens P1 · D12 → LED1","D6 → sens P2  · D11 → LED2","D2 → sens P3  · D8 → LED3","A0 → señal SERVO","A4 → LCD SDA · A5 → LCD SCL","GND → riel común"].forEach((t, i) =>
+    ctx.fillText(t, UNO1.x + 16, UNO1.y + 52 + i * 20));
+  ctx.fillStyle = "#f5e6a8"; ctx.fillText("NUNCA: 5V del #1 al servo", UNO1.x + 16, UNO1.y + UNO1.h - 14);
+  // plazas
+  SPOTS.forEach(s => {
+    for (const r of [s.sensor, s.led]) rr(r.x, r.y, r.w, r.h, 10, r.fill, "#00000033", 1.4);
+    ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "700 12px system-ui";
+    s.sensor.name.split("\n").forEach((t, i) => ctx.fillText(t, s.sensor.x + s.sensor.w / 2, s.sensor.y + 32 + i * 16));
+    s.led.name.split("\n").forEach((t, i) => ctx.fillText(t, s.led.x + s.led.w / 2, s.led.y + 32 + i * 16));
+    const rx = s.led.x + s.led.w / 2, ry = s.led.y + s.led.h - 12;
+    ctx.fillStyle = "#d8b97a"; rr(rx - 22, ry - 4, 44, 9, 4.5, "#d8b97a", "#8a6d34", 1.1);
+    ctx.fillStyle = "#7a4a1e"; ["#c0392b","#c0392b","#6e4f16","#c9a227"].forEach((c, i) => ctx.fillRect(rx - 17 + i * 9, ry - 2, 5, 5));
+    ctx.fillStyle = "#333"; ctx.font = "700 9px system-ui";
+    ctx.fillText(s.r, rx, ry + 12);
+  });
+  // NOTAS
+  rr(NOTE.x, NOTE.y, NOTE.w, NOTE.h, 10, NOTE.fill, "#33465a", 1.4);
+  ctx.fillStyle = "#8fd3ff"; ctx.font = "700 11px system-ui"; ctx.textAlign = "center";
+  ctx.fillText("NOTAS", NOTE.x + NOTE.w / 2, NOTE.y + 20);
+  ctx.fillStyle = "#cfe1ee"; ctx.font = "10px system-ui"; ctx.textAlign = "left";
+  ["UNO #2 = solo energía:", "copia su 5V al riel rojo,", "su GND al riel azul (masa común).", "Nunca toca SDA/SCL ni pines.", "El #1 corre el programa", "y sus pines no alimentan el servo.", "Pila siempre por VIN."].forEach((t, i) =>
+    ctx.fillText(t, NOTE.x + 10, NOTE.y + 42 + i * 22));
+}
+
 function drawWires() {
   ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.lineJoin = "round";
   for (const w of WIRES) {
     const pts = wirePts(w);
-    ctx.globalAlpha = (sel === -1 || sel === w.i) ? 1 : 0.10;
+    const on = w.i === sel || sel === -1;
+    ctx.globalAlpha = on ? 1 : 0.10;
     ctx.strokeStyle = w.color;
-    ctx.lineWidth = (sel === w.i ? 4.6 : 3);
+    ctx.lineWidth = (w.i === sel ? 4.4 : 3);
     ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
     for (let k = 1; k < pts.length; k++) ctx.lineTo(pts[k].x, pts[k].y);
-    ctx.stroke();
-    ctx.lineWidth = 3;
+    ctx.stroke(); ctx.lineWidth = 3;
     ctx.fillStyle = w.color;
-    ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, 4.3, 0, 7); ctx.fill();
-    ctx.beginPath(); ctx.arc(pts[pts.length-1].x, pts[pts.length-1].y, 4.3, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(pts[0].x, pts[0].y, 4.2, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(pts[pts.length - 1].x, pts[pts.length - 1].y, 4.2, 0, 7); ctx.fill();
   }
   ctx.globalAlpha = 1;
-  // subetiqueta del cable seleccionado
   if (sel >= 0) {
     const w = WIRES[sel];
-    const txt = w.label;
     ctx.font = "700 12px system-ui";
-    const wdt = ctx.measureText(txt).width + 24;
-    ctx.fillStyle = "#111827ee"; rr((cv.width - wdt) / 2, 8, wdt, 22, 11, "#111827ee", "#38bdf8", 1.2);
+    const wdt = ctx.measureText(w.label).width + 26;
+    rr((cv.width - wdt) / 2, 8, wdt, 22, 11, "#111827ee", "#38bdf8", 1.2);
     ctx.fillStyle = "#eaf6ff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(txt, cv.width / 2, 19.5); ctx.textBaseline = "alphabetic";
+    ctx.fillText(w.label, cv.width / 2, 19.5); ctx.textBaseline = "alphabetic";
   }
 }
+function draw() { drawBoard(); drawParts(); drawWires(); }
 function distSeg(a, b, p) {
   const dx = b.x - a.x, dy = b.y - a.y;
   const l2 = dx * dx + dy * dy || 1;
@@ -324,59 +302,27 @@ function distSeg(a, b, p) {
   return Math.hypot(p.x - px, p.y - py);
 }
 cv.addEventListener("click", (e) => {
-  const rect = cv.getBoundingClientRect();
-  const p = {
-    x: (e.clientX - rect.left) * (cv.width / rect.width),
-    y: (e.clientY - rect.top) * (cv.height / rect.height)
-  };
+  const r = cv.getBoundingClientRect();
+  const p = { x: (e.clientX - r.left) * cv.width / r.width, y: (e.clientY - r.top) * cv.height / r.height };
   let best = -1, bd = 1e9;
-  for (const w of WIRES) {
-    const pts = wirePts(w);
-    for (let k = 0; k < pts.length - 1; k++) {
-      const d = distSeg(pts[k], pts[k + 1], p);
-      if (d < bd) { bd = d; best = w.i; }
-    }
-  }
+  for (const w of WIRES) { const pts = wirePts(w); for (let k = 0; k < pts.length - 1; k++) { const d = distSeg(pts[k], pts[k + 1], p); if (d < bd) { bd = d; best = w.i; } } }
   select(bd < 11 ? (sel === best ? -1 : best) : -1);
 });
-cv.addEventListener("mousemove", (e) => {
-  const rect = cv.getBoundingClientRect();
-  const p = {
-    x: (e.clientX - rect.left) * (cv.width / rect.width),
-    y: (e.clientY - rect.top) * (cv.height / rect.height)
-  };
-  let bd = 1e9;
-  for (const w of WIRES) {
-    const pts = wirePts(w);
-    for (let k = 0; k < pts.length - 1; k++) {
-      const d = distSeg(pts[k], pts[k + 1], p);
-      if (d < bd) bd = d;
-    }
-  }
-  cv.style.cursor = bd < 11 ? "pointer" : "default";
-});
-function draw() {
-  drawBoard();
-  drawParts();
-  drawWires();
-}
-draw();
-
-const UL = document.getElementById("lista");
-const DL = document.getElementById("lista2");
 function select(i) {
   sel = i;
   document.querySelectorAll("#lista li, #lista2 li").forEach(li => li.classList.toggle("on", +li.dataset.i === i));
   draw();
 }
+let sel = -1;
+const UL = document.getElementById("lista"), DL = document.getElementById("lista2");
 WIRES.forEach(w => {
   const li = document.createElement("li");
   li.dataset.i = w.i;
   li.innerHTML = "<code>" + w.label + "</code>";
-  li.title = w.label;
   li.onclick = () => select(sel === w.i ? -1 : w.i);
-  (w.label.startsWith("fuente") || w.label.startsWith("buck") || w.label.startsWith("uno:GND")) ? UL.appendChild(li) : DL.appendChild(li);
+  ((w.label.startsWith("fuente") || w.label.startsWith("uno2") || (w.label.startsWith("uno") && w.label.includes("GND"))) ? UL : DL).appendChild(li);
 });
+draw();
 </script>
 </body>
 </html>

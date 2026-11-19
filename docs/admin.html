@@ -28,6 +28,8 @@
   .chip { display:inline-block; padding:3px 9px; border-radius:999px; border:1px solid #30363d;
           margin:3px 6px 3px 0; font-size:.85rem; }
   .chip.on { border-color:#f85149; color:#f85149; }
+  .simBtn { border-color:#8b949e; color:#8b949e; }
+  .simBtn.on { border-color:#f85149; color:#f85149; }
   .park-view h2 { font-size:1rem; margin:0; }
   .park-view canvas { display:block; width:100%; height:auto; margin:10px 0 6px;
                       border:1px solid #30363d; border-radius:8px; background:#0d151e; }
@@ -224,6 +226,22 @@
       (bienvenida, hora de cierre, promociones…).</div>
       <div class="nota" style="margin-top:8px">La plaza 2 la controla la web (virtual). La plaza 3
       quedará lista para el tercer espacio futuro (el firmware actual la ignora).</div>
+    </div>
+    <div class="card">
+      <div class="row"><strong>🎭 Simulación por plaza (sobreescribe sensores)</strong></div>
+      <div class="row" style="margin-top:8px">
+        <button id="simModo" class="rojo">Simulación: OFF</button>
+        <span id="simEstado" class="muted" style="margin-left:10px;font-size:.85rem">sensores reales</span>
+      </div>
+      <div class="row" style="margin-top:8px;flex-wrap:wrap;gap:8px">
+        <button id="simP1" class="simBtn" data-slot="0">A1 (P1): libre</button>
+        <button id="simP2" class="simBtn" data-slot="1">A2 (P2): libre</button>
+        <button id="simP3" class="simBtn" data-slot="2">A3 (P3): libre</button>
+      </div>
+      <div class="nota" style="margin-top:4px">
+        En modo simulación cada clic alterna ocupar/liberar en esa plaza y envía la orden al Arduino por MQTT.
+        Desactiva para volver a mostrar lo que reportan los sensores reales.
+      </div>
     </div>
     <div class="card">
       <div class="row"><strong>🔧 Tests (panel anterior)</strong></div>
@@ -695,6 +713,63 @@ const TOP_E = "iot/fixmol/estado", TOP_P = "iot/fixmol/plazas", TOP_C = "iot/fix
 const TOKEN = "fixmol2026";
 let cli = null, idxB = 0, timerB = null, ultimoSeñal = 0, timerSalud = null;
 
+/* ===== Simulación por plaza (sobreescribe sensores reales) ===== */
+let modoSimulacion = false;
+let estadoSimulado = { ocupadas: [0, 0, 0], barrera: "CERRADA" };
+
+function simAplicarUI() {
+  const simBtns = [ $("simP1"), $("simP2"), $("simP3") ];
+  estadoSimulado.ocupadas.forEach((ocu, i) => {
+    const b = simBtns[i];
+    if (b) {
+      b.textContent = "A" + (i+1) + " (P" + (i+1) + "): " + (ocu ? "OCUPADA" : "libre");
+      b.classList.toggle("on", ocu === 1);
+    }
+    pinta("p" + (i+1), ocu === 1, "P" + (i+1) + " (sim)");
+  });
+  $("libres").textContent = estadoSimulado.ocupadas.filter(x => x === 0).length + " / 3 libres (sim)";
+  $("barrChip").textContent = "Barrera: " + estadoSimulado.barrera;
+  $("barrChip").classList.toggle("on", estadoSimulado.barrera !== "CERRADA");
+  $("tsTxt").textContent = "simulación " + new Date().toLocaleTimeString();
+  const estado3d = { ...estadoSimulado };
+  if (P1_VISOR_INVERTIDO && estado3d.ocupadas?.[0] !== undefined) {
+    estado3d.ocupadas[0] = 1 - estado3d.ocupadas[0];
+  }
+  window.ParkNetView?.update(estado3d);
+}
+
+function simAlternarPlaza(slot) {
+  if (!modoSimulacion) return;
+  estadoSimulado.ocupadas[slot] = estadoSimulado.ocupadas[slot] === 1 ? 0 : 1;
+  simAplicarUI();
+  // envía la orden al Arduino por MQTT (firma con token, admin verificado)
+  enviar({ cmd: "toggle", slot: slot + 1 });
+}
+
+function simActivar(activar) {
+  modoSimulacion = activar;
+  const b = $("simModo");
+  const est = $("simEstado");
+  const btns = [ $("simP1"), $("simP2"), $("simP3") ];
+  if (activar) {
+    b.className = "verde";
+    b.textContent = "Simulación: ON";
+    est.textContent = "sobrescribe sensores";
+    btns.forEach(b => b.style.opacity = "1");
+    // arranca el estado simulado desde el último estado real conocido
+    simAplicarUI();
+    logM("🎭 Modo SIMULACIÓN activado — plaza controlada desde admin");
+  } else {
+    b.className = "rojo";
+    b.textContent = "Simulación: OFF";
+    est.textContent = "sensores reales";
+    btns.forEach(b => b.style.opacity = "0.45");
+    logM("🎭 Modo SIMULACIÓN desactivado — vuelve a sensores reales");
+    // pide al Arduino que reenvíe su estado real
+    enviar({ cmd: "sync" });
+  }
+}
+
 function logM(m) {
   $("log").textContent = (new Date().toLocaleTimeString() + "  " + m + "\n") +
     $("log").textContent.split("\n").slice(0,40).join("\n");
@@ -768,23 +843,29 @@ function conectarMqtt() {
         const d = JSON.parse(s);
         const p1Valida = d.ocupadas?.[0] === 0 || d.ocupadas?.[0] === 1;
         if (p1Valida) estadoRecibido = true;
-        $("libres").textContent = d.libres + " / " + d.total + " libres";
-        pinta("p1", (d.ocupadas[0]||0) === 1, "P1 (sensor)");
-        pinta("p2", (d.ocupadas[1]||0) === 1, "P2 (D6)");
-        if (d.ocupadas[2] === 0 || d.ocupadas[2] === 1) {
-          pinta("p3", d.ocupadas[2] === 1, "P3");
-        } else {
-          $("p3").textContent = "P3: sin datos";
-          $("p3").classList.remove("on");
-        }
+        // Barrera siempre viene de la placa real (el modo sim no mueve barrera)
         $("barrChip").textContent = "Barrera: " + d.barrera;
         $("barrChip").classList.toggle("on", d.barrera !== "CERRADA");
         logM("estado: " + s);
-        const estado3d = { ...d };
-        if (P1_VISOR_INVERTIDO && estado3d.ocupadas?.[0] !== undefined) {
-          estado3d.ocupadas[0] = 1 - estado3d.ocupadas[0];   // solo el visor, P1
+        if (modoSimulacion) {
+          // en simulación las plazas vienen del estado local simulado
+          simAplicarUI();
+        } else {
+          $("libres").textContent = d.libres + " / " + d.total + " libres";
+          pinta("p1", (d.ocupadas[0]||0) === 1, "P1 (sensor)");
+          pinta("p2", (d.ocupadas[1]||0) === 1, "P2 (D6)");
+          if (d.ocupadas[2] === 0 || d.ocupadas[2] === 1) {
+            pinta("p3", d.ocupadas[2] === 1, "P3");
+          } else {
+            $("p3").textContent = "P3: sin datos";
+            $("p3").classList.remove("on");
+          }
+          const estado3d = { ...d };
+          if (P1_VISOR_INVERTIDO && estado3d.ocupadas?.[0] !== undefined) {
+            estado3d.ocupadas[0] = 1 - estado3d.ocupadas[0];
+          }
+          window.ParkNetView?.update(estado3d);
         }
-        window.ParkNetView?.update(estado3d);
       } catch(e) { logM("(ilegible) " + s); }
     }
   });
@@ -820,6 +901,12 @@ async function soyAdminAhora() {
 
 $("bAbrir").onclick  = () => enviar({ cmd:"barrera", estado:"ABIERTA" });
 $("bCerrar").onclick = () => enviar({ cmd:"barrera", estado:"CERRADA" });
+
+/* ===== simulación por plaza ===== */
+$("simModo").onclick = () => simActivar(!modoSimulacion);
+$("simP1").onclick = () => simAlternarPlaza(0);
+$("simP2").onclick = () => simAlternarPlaza(1);
+$("simP3").onclick = () => simAlternarPlaza(2);
 
 /* ===== asistente de voz para el administrador ===== */
 let vozRec = null, vozOn = false;

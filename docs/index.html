@@ -739,7 +739,7 @@
       function validSlot() {
         var date = $("bookingDate").value;
         var time = $("bookingTime").value;
-        if (!date || !time || time.slice(3) !== "00" || date < localDate(new Date())) return false;
+        if (!date || !time || date < localDate(new Date())) return false;
         // a partir de la hora actual sí se puede reservar
         if (date > localDate(new Date())) return true;
         return Number(time.slice(0, 2)) >= new Date().getHours();
@@ -1256,7 +1256,11 @@
       });
       $("bookingForm").addEventListener("submit", createBooking);
       $("bookingDate").addEventListener("change", refreshAvailability);
-      $("bookingTime").addEventListener("change", refreshAvailability);
+      $("bookingTime").addEventListener("change", function () {
+        var v = $("bookingTime").value;
+        if (v) $("bookingTime").value = v.slice(0, 2) + ":00";   // los bloques son de 1h
+        refreshAvailability();
+      });
 
       /* ===== estado en vivo del estacionamiento (MQTT, sin login) =====
          La placa publica iot/fixmol/estado (JSON) y plazas (numero). Cualquier

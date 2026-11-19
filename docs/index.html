@@ -740,7 +740,9 @@
         var date = $("bookingDate").value;
         var time = $("bookingTime").value;
         if (!date || !time || time.slice(3) !== "00" || date < localDate(new Date())) return false;
-        return new Date(date + "T" + time + ":00").getTime() > Date.now();
+        // a partir de la hora actual sí se puede reservar
+        if (date > localDate(new Date())) return true;
+        return Number(time.slice(0, 2)) >= new Date().getHours();
       }
       function setMessage(message, kind) {
         var element = $("bookingStatus");

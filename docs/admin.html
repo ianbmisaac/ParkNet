@@ -694,7 +694,7 @@ const BROKERS = [
 const TOP_E = "iot/fixmol/estado", TOP_P = "iot/fixmol/plazas", TOP_C = "iot/fixmol/comando",
       TOP_S = "iot/fixmol/servo", TOP_L = "iot/fixmol/log";
 const TOKEN = "fixmol2026";
-let cli = null, idxB = 0, timerB = null;
+let cli = null, idxB = 0, timerB = null, ultimoSeñal = 0, timerSalud = null;
 
 function logM(m) {
   $("log").textContent = (new Date().toLocaleTimeString() + "  " + m + "\n") +
@@ -720,20 +720,33 @@ function conectarMqtt() {
                             connectTimeout: 8000, reconnectPeriod: 0 });
   cli.on("connect", () => {
     clearInterval(timerB);
-    $("stMqtt").textContent = "conectado ✅"; $("stMqtt").className = "ok";
-    logM("conectado a " + new URL(url).host);
+    $("stMqtt").textContent = "broker conectado · esperando placa…"; $("stMqtt").className = "warn";
+    logM("broker OK: " + new URL(url).host + " — esperando la placa…");
     cli.subscribe([TOP_E, TOP_P, TOP_S, TOP_L]);
+    ultimoSeñal = Date.now();
+    clearInterval(timerSalud);
+    timerSalud = setInterval(() => {
+      const pasaron = Date.now() - ultimoSeñal;
+      if (pasaron > 15000) {
+        $("stMqtt").textContent = "⚠ placa sin señal (" + Math.floor(pasaron/1000) + "s)"; $("stMqtt").className = "bad";
+        $("tsTxt").textContent = "⚠ la placa no está reportando — revisa USB/WiFi";
+      }
+    }, 3000);
   });
   cli.on("close", () => {
     window.ParkNetView?.disconnect();
     $("stMqtt").textContent = "reconectando…"; $("stMqtt").className = "warn";
-    clearInterval(timerB);
+    clearInterval(timerB); clearInterval(timerSalud);
     timerB = setTimeout(() => { idxB++; conectarMqtt(); }, 4000);
   });
   cli.on("error", () => { try { cli.end(true); } catch(e){} });
   let estadoRecibido = false;
   cli.on("message", (t, msg) => {
     const s = msg.toString();
+    ultimoSeñal = Date.now();
+    if ($("stMqtt").className !== "ok") {
+      $("stMqtt").textContent = "conectado ✅"; $("stMqtt").className = "ok";
+    }
     $("tsTxt").textContent = "señal " + new Date().toLocaleTimeString();
     if (t === TOP_P && !estadoRecibido) $("libres").textContent = s + " libres";
     if (t === TOP_S) logM("servo ← " + s);
@@ -935,6 +948,14 @@ function alarmaLlegada(mensaje) {
 
 /* ================= arranque ================= */
 $("dia").value = fechaStr(new Date());
+
+// cuando la pestaña vuelve al frente (sobre todo en móvil), reconecta forzoso
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    if (cli && !cli.connected) { try { cli.end(true); } catch(e){} }
+    conectarMqtt();
+  }
+});
 conectarMqtt();
 </script>
 </body>

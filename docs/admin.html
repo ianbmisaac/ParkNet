@@ -44,6 +44,7 @@
 <script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mqtt@5/dist/mqtt.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 <header>
@@ -135,6 +136,7 @@
       <div class="row"><strong>📜 Historial completo</strong>
         <span class="row" style="gap:6px">
           <button id="hT">Todas</button><button id="hA">Activas</button><button id="hC">Canceladas</button>
+          <button id="hPDF" title="descarga un reporte PDF de ocupación">📄 PDF</button>
         </span>
       </div>
       <div class="lista" id="historial" style="margin-top:8px"><span class="muted">…</span></div>
@@ -156,6 +158,11 @@
 
   <!-- ===== TAB hardware ===== -->
   <section id="secHW" style="display:none">
+    <div class="card">
+      <div class="row"><span>🗣 Asistente admin por voz</span>
+        <button id="bMic">🎙 Activar escucha</button></div>
+      <div class="nota" id="micEstado">Di "abrir" o "cerrar" para la barrera, o "luces" para encender/apagar.</div>
+    </div>
     <div class="card">
       <div class="row"><span>MQTT</span><span id="stMqtt" class="warn">conectando…</span></div>
       <div class="row" style="margin-top:6px">
@@ -801,6 +808,84 @@ async function soyAdminAhora() {
 
 $("bAbrir").onclick  = () => enviar({ cmd:"barrera", estado:"ABIERTA" });
 $("bCerrar").onclick = () => enviar({ cmd:"barrera", estado:"CERRADA" });
+
+/* ===== asistente de voz para el administrador ===== */
+let vozRec = null, vozOn = false;
+function vozEscuchando(msg) {
+  $("micEstado").textContent = msg;
+}
+if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  $("bMic").onclick = () => {
+    if (vozOn) { vozOn = false; vozRec.stop(); $("bMic").textContent = "🎙 Activar escucha"; vozEscuchando("Escucha detenida"); return; }
+    if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) return;
+    vozRec = new SR();
+    vozRec.lang = "es-CL"; vozRec.continuous = true; vozRec.interimResults = false;
+    vozRec.onstart = () => { vozEscuchando("Escuchando… di 'abrir', 'cerrar' o 'luces'"); };
+    vozRec.onresult = (ev) => {
+      const t = ev.results[ev.results.length - 1][0].transcript.toLowerCase();
+      vozEscuchando("escuchado: \"" + t + "\"");
+      if (t.includes("abrir")) enviar({ cmd:"barrera", estado:"ABIERTA" });
+      else if (t.includes("cerrar")) enviar({ cmd:"barrera", estado:"CERRADA" });
+      else if (t.includes("luces")) enviar({ cmd:"luces", modo:"AUTO" });
+    };
+    vozRec.onerror = () => { vozEscuchando("No te entendí / permiso denegado"); };
+    vozRec.onend = () => { if (vozOn) vozRec.start(); };   // escucha continua
+    vozOn = true; vozRec.start();
+    $("bMic").textContent = "🎙 Escuchando…";
+  };
+} else {
+  $("bMic").onclick = () => { vozEscuchando("Tu navegador no soporta voz (usa Chrome/Edge)"); };
+}
+
+/* ===== reporte PDF del admin ===== */
+$("hPDF").onclick = async () => {
+  if (!user || !esAdmin) { msgHist("solo admin"); return; }
+  if (!window.jspdf) { msgHist("jsPDF no cargó, revisa conexión"); return; }
+  msgHist("generando PDF…");
+  try {
+    // sin collectionGroup: slots + reservas de su dueño
+    const slotSnap = await db.collection("slots").get();
+    const slots = slotSnap.docs.map(d => d.data()).filter(s => s.userId && s.bookingId);
+    const reads = slots.map(s =>
+      db.collection("users").doc(s.userId).collection("reservations").doc(s.bookingId).get()
+    );
+    const rs = await Promise.all(reads);
+    const all = rs.filter(r => r.exists).map(r => r.data());
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const hoy = new Date().toLocaleDateString("es-CL", { day:"2-digit", month:"long", year:"numeric" });
+    doc.setFillColor(9,37,27); doc.rect(0,0,210,28,"F");
+    doc.setTextColor(114,237,189); doc.setFont("helvetica","bold"); doc.setFontSize(20);
+    doc.text("ParkNet · Reporte de ocupación", 14, 13);
+    doc.setFontSize(10); doc.setFont("helvetica","normal");
+    doc.setTextColor(230,240,235);
+    doc.text("Generado el " + hoy, 14, 21);
+    doc.setTextColor(30,30,30);
+    const activas = all.filter(x => (x.status||"active") === "active").length;
+    const canceladas = all.filter(x => x.status === "cancelled").length;
+    const checkins = all.filter(x => x.checkedIn).length;
+    doc.setFontSize(12); doc.setFont("helvetica","bold");
+    doc.text("Métricas", 14, 40);
+    doc.setFont("helvetica","normal"); doc.setFontSize(11);
+    doc.text("Reservas totales: " + all.length, 14, 48);
+    doc.text("Activas:          " + activas, 14, 56);
+    doc.text("Canceladas:       " + canceladas, 14, 64);
+    doc.text("Ingresadas (QR):  " + checkins, 14, 72);
+    doc.setFont("helvetica","bold"); doc.text("Detalle", 14, 86);
+    doc.setFont("helvetica","normal"); doc.setFontSize(9);
+    all.sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));
+    let y = 95;
+    all.slice(0, 28).forEach(x => {
+      if (y > 280) { doc.addPage(); y = 20; }
+      doc.text("- " + (x.spaceId||"?") + "  " + (x.date||"-") + "  " + (x.hour||"?") + ":00  " +
+        (x.status||"active") + (x.checkedIn ? "  [QR]" : ""), 14, y);
+      y += 7;
+    });
+    doc.save("parknet-reporte-" + new Date().toISOString().slice(0,10) + ".pdf");
+    msgHist("PDF descargado ✓");
+  } catch (e) { msgHist("No se pudo generar: " + (e.code || e.message)); }
+};
 // Plazas 2/3 ahora físicas: el web ya no fuerza estado (el sensor manda).
 $("bLcd1").onclick = () => enviar({ cmd:"lcd", modo:"fixmol" });
 $("bLcd0").onclick = () => enviar({ cmd:"lcd", modo:"datos" });

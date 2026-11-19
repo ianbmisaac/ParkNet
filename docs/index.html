@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#060d12">
-  <title>Parking S2 | Modelo 3D</title>
+  <title>Parking S2 | Ocupación en vivo</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -33,7 +33,7 @@
         var(--bg);
     }
     button { font: inherit; }
-    button:focus-visible, .parking-spot:focus-visible { outline: 3px solid var(--mint); outline-offset: 4px; }
+    button:focus-visible { outline: 3px solid var(--mint); outline-offset: 4px; }
     .shell { width: min(1120px, 100% - 40px); margin: 0 auto; padding: 28px 0 34px; }
     .topbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 22px; }
     .brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
@@ -53,6 +53,7 @@
       color: var(--muted); font-size: .76rem; white-space: nowrap;
     }
     .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--mint-strong); box-shadow: 0 0 12px rgba(53,217,154,.7); }
+    .live-pill.is-offline .live-dot { background: #91a5a0; box-shadow: none; animation: none; }
     .clock { color: var(--text); font-size: .86rem; font-variant-numeric: tabular-nums; }
 
     .summary {
@@ -99,39 +100,28 @@
         radial-gradient(ellipse at 50% 80%, rgba(51,108,123,.12), transparent 52%),
         #101a20;
     }
-    .garage { display: block; width: 100%; height: auto; max-height: 590px; margin: 0 auto; }
-    .garage .scene-shadow { fill: rgba(0,0,0,.38); }
-    .garage .outer-shell { fill: #101c22; }
-    .garage .back-wall { fill: url(#backWall); stroke: rgba(226,237,237,.18); stroke-width: 2; }
-    .garage .side-wall { fill: url(#sideWall); stroke: rgba(226,237,237,.13); stroke-width: 2; }
-    .garage .blue-band { fill: url(#blueBand); }
-    .garage .navy-trim { fill: #142b54; }
-    .garage .floor { fill: url(#floorGradient); stroke: rgba(255,255,255,.18); stroke-width: 2; }
-    .garage .floor-sheen { fill: none; stroke: rgba(255,255,255,.055); stroke-width: 1.5; }
-    .garage .parking-spot { cursor: pointer; outline: none; }
-    .garage .spot-plane { fill: rgba(115,237,189,.025); stroke: rgba(241,249,247,.88); stroke-width: 4; transition: fill .2s, stroke .2s; }
-    .garage .spot-inner { fill: none; stroke: rgba(255,255,255,.13); stroke-width: 1.5; }
-    .garage .parking-spot:hover .spot-plane,
-    .garage .parking-spot:focus .spot-plane { fill: rgba(115,237,189,.12); stroke: #b5ffe2; }
-    .garage .parking-spot.is-occupied .spot-plane { fill: rgba(255,130,116,.07); stroke: rgba(255,224,219,.88); }
-    .garage .sensor { fill: rgba(53,217,154,.25); stroke: var(--mint-strong); stroke-width: 2; transition: fill .2s, stroke .2s; }
-    .garage .sensor-light { fill: var(--mint); filter: url(#glowMint); }
-    .garage .parking-spot.is-occupied .sensor { fill: rgba(255,130,116,.19); stroke: var(--coral); }
-    .garage .parking-spot.is-occupied .sensor-light { fill: var(--coral); filter: url(#glowRed); }
-    .garage .spot-code { fill: #eef8f4; font-size: 20px; font-weight: 800; letter-spacing: 1px; text-anchor: middle; }
-    .garage .spot-state { fill: var(--mint); font-size: 12px; font-weight: 800; letter-spacing: 1.4px; text-anchor: middle; }
-    .garage .parking-spot.is-occupied .spot-state { fill: var(--coral); }
-    .garage .car-model { opacity: 0; transform-box: fill-box; transform-origin: center; transform: scale(.82); transition: opacity .22s ease, transform .22s ease; pointer-events: none; filter: drop-shadow(0 9px 8px rgba(0,0,0,.36)); }
-    .garage .parking-spot.is-occupied .car-model { opacity: 1; transform: scale(1); }
-    .garage .car-body { fill: url(#carPaint); stroke: #a9c9cc; stroke-width: 2; }
-    .garage .car-glass { fill: #193b4b; stroke: #7ba8b5; stroke-width: 1.5; }
-    .garage .car-highlight { fill: rgba(225,245,246,.17); }
-    .garage .car-wheel { fill: #101619; stroke: #54656a; stroke-width: 2; }
-    .garage .lane-arrow { fill: none; stroke: rgba(232,239,232,.58); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
-    .garage .lane-label { fill: #e2e7df; font-size: 12px; font-weight: 800; letter-spacing: 2px; text-anchor: middle; }
-    .garage .gate-line { stroke: #d8e1df; stroke-width: 7; stroke-linecap: round; }
-    .garage .gate-post { fill: #182832; stroke: #a9bdba; stroke-width: 2; }
-    .garage .barrier-stripe { fill: none; stroke: #ed7369; stroke-width: 6; stroke-linecap: round; stroke-dasharray: 8 9; }
+    .live-park-view {
+      display: block; width: 100%; max-width: 900px; height: auto; margin: 0 auto;
+      border: 1px solid rgba(145,190,201,.22); border-radius: 16px;
+      background: #0a1018; box-shadow: 0 28px 52px rgba(0,0,0,.38);
+    }
+    .model-sync { margin: 5px 0 0 29px; color: #9fb6b0; font-size: .875rem; }
+    .live-stalls { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin: 16px 0 0; }
+    .live-stall {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      min-height: 54px; padding: 12px 15px; border: 1px solid rgba(192,220,218,.14);
+      border-radius: 13px; background: #101d24; color: #d4e4e0; font-size: .875rem;
+    }
+    .live-stall span { font-weight: 800; letter-spacing: .05em; }
+    .live-stall strong { color: #a9bbb6; font-size: .875rem; }
+    .live-stall.is-free { border-color: rgba(115,237,189,.4); background: rgba(53,217,154,.09); }
+    .live-stall.is-free strong { color: var(--mint); }
+    .live-stall.is-occupied { border-color: rgba(255,130,116,.4); background: rgba(255,130,116,.09); }
+    .live-stall.is-occupied strong { color: var(--coral); }
+    @media (max-width: 560px) {
+      .live-stalls { gap: 6px; }
+      .live-stall { display: grid; justify-content: center; text-align: center; padding: 9px 5px; }
+    }
     .scene-caption { display: flex; justify-content: space-between; gap: 12px; padding: 0 21px 15px; color: var(--muted); font-size: .7rem; }
     .scene-caption strong { color: #cfdfda; font-weight: 650; }
 
@@ -305,7 +295,6 @@
     .google-mark { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: #4285f4; background: #fff; font: 800 17px/1 Arial, sans-serif; }
     .field[hidden] { display: none !important; }
     .config-warning { margin: 12px 0 0; border-color: rgba(255,196,111,.2); color: #e4c997; background: rgba(255,196,111,.06); }
-    .garage .parking-spot.is-selected .spot-plane { stroke: #adffe0; stroke-width: 6; }
     @media (max-width: 680px) {
       .booking-grid { grid-template-columns: 1fr; }
       .booking-card { padding: 16px; }
@@ -461,9 +450,9 @@
       background: linear-gradient(180deg, rgba(255, 255, 255, .025), transparent);
     }
     .model-title h3 { font-size: 1rem; letter-spacing: -.02em; }
-    .model-subtitle { color: #829a95; font-size: .74rem; }
+    .model-subtitle { color: #829a95; font-size: .875rem; }
     .legend { gap: 16px; }
-    .legend span { color: #93aaa5; font-size: .72rem; }
+    .legend span { color: #93aaa5; font-size: .875rem; }
     .legend-dot { box-shadow: 0 0 9px rgba(53, 217, 154, .7); }
     .legend-dot.busy { box-shadow: 0 0 9px rgba(255, 130, 116, .55); }
     .scene-wrap {
@@ -477,20 +466,9 @@
       background: linear-gradient(180deg, rgba(0, 0, 0, .2), transparent 16%, transparent 80%, rgba(0, 0, 0, .3)),
                   radial-gradient(ellipse at 50% 100%, transparent 52%, rgba(0, 0, 0, .24) 100%);
     }
-    .garage {
-      position: relative; z-index: 1;
-      filter: drop-shadow(0 26px 34px rgba(0, 0, 0, .42));
-    }
-    .garage .spot-plane { stroke-width: 3.5; }
-    .garage .parking-spot:hover .spot-plane,
-    .garage .parking-spot:focus .spot-plane {
-      filter: drop-shadow(0 0 12px rgba(122, 240, 196, .45));
-    }
-    .garage .parking-spot.is-selected .spot-plane {
-      filter: drop-shadow(0 0 14px rgba(122, 240, 196, .55));
-    }
     .scene-caption {
       padding: 12px 24px 16px; color: #81958f;
+      font-size: .875rem;
       border-top: 1px solid rgba(174, 210, 205, .06);
       background: rgba(5, 11, 15, .42);
     }
@@ -690,7 +668,7 @@
         <div>
           <p class="eyebrow">Panel de disponibilidad</p>
           <h1>Parking S2</h1>
-          <p class="brand-sub">Vista 3D simplificada del nivel -2</p>
+          <p class="brand-sub">Ocupación en vivo del nivel -2</p>
         </div>
       </div>
       <div class="top-meta">
@@ -709,7 +687,7 @@
             border:1px solid #d9a13d;background:transparent;color:#f0c67e;cursor:pointer;
             font-size:.72rem">Reenviar</button>
         </div>
-        <div class="live-pill"><span class="live-dot" aria-hidden="true"></span>En tiempo real</div>
+        <div class="live-pill is-offline" id="livePill"><span class="live-dot" aria-hidden="true"></span><span id="livePillLabel">Esperando placa</span></div>
         <time class="clock" id="hora" aria-label="Hora actual"></time>
       </div>
     </header>
@@ -722,16 +700,16 @@
     <section id="dashboardView">
     <section class="summary" aria-labelledby="titulo">
       <div class="summary-main">
-        <div class="summary-count" id="libres">3</div>
+        <div class="summary-count" id="libres">–</div>
         <div>
           <p class="summary-label">Lugares disponibles</p>
-          <h2 id="titulo" aria-live="polite">Hay 3 lugares disponibles</h2>
-          <p class="summary-note" id="sub">Selecciona un espacio del modelo para cambiar su estado.</p>
+          <h2 id="titulo" aria-live="polite">Esperando datos de la placa</h2>
+          <p class="summary-note" id="sub">La ocupación se actualiza con los sensores del estacionamiento.</p>
         </div>
       </div>
       <div class="summary-right">
-        <div class="meter" id="seg" role="img" aria-label="3 de 3 espacios disponibles"></div>
-        <span class="count-caption" id="resumen">3 de 3 libres</span>
+        <div class="meter" id="seg" role="img" aria-label="Esperando datos de los espacios"></div>
+        <span class="count-caption" id="resumen">Esperando sensores</span>
       </div>
     </section>
 
@@ -742,7 +720,8 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 9-5 9 5-9 5-9-5Z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/></svg>
             <h3 id="modelTitle">Modelo del estacionamiento</h3>
           </div>
-          <p class="model-subtitle">Toca uno de los espacios para alternar su estado</p>
+          <p class="model-subtitle">Autos y plazas sincronizados con los sensores Arduino</p>
+          <p class="model-sync" id="liveParkViewStatus">Esperando señal de la placa</p>
         </div>
         <div class="legend" aria-label="Leyenda">
           <span><i class="legend-dot"></i>Disponible</span>
@@ -751,155 +730,27 @@
       </div>
 
       <div class="scene-wrap">
-        <svg class="garage" id="garage" viewBox="0 0 960 570" role="group" aria-labelledby="sceneTitle sceneDesc">
-          <title id="sceneTitle">Modelo tridimensional simplificado de Parking S2</title>
-          <desc id="sceneDesc">Tres espacios frente a un muro azul y blanco, con vía de circulación y acceso en la abertura del lado derecho, junto a una barrera. Cada espacio se puede seleccionar.</desc>
-          <defs>
-            <linearGradient id="backWall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e5e9e8"/><stop offset=".62" stop-color="#d4dcdd"/><stop offset="1" stop-color="#bfcbd0"/></linearGradient>
-            <linearGradient id="sideWall" x1="0" y1="0" x2="1" y2=".4"><stop offset="0" stop-color="#aebdc4"/><stop offset=".55" stop-color="#d3dcdf"/><stop offset="1" stop-color="#b8c8cd"/></linearGradient>
-            <linearGradient id="blueBand" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#327eae"/><stop offset="1" stop-color="#205987"/></linearGradient>
-            <linearGradient id="floorGradient" x1="0" y1="0" x2=".8" y2="1"><stop offset="0" stop-color="#717d84"/><stop offset=".5" stop-color="#59636a"/><stop offset="1" stop-color="#424d55"/></linearGradient>
-            <linearGradient id="carPaint" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d9e7e8"/><stop offset=".45" stop-color="#8eabb3"/><stop offset="1" stop-color="#526f7a"/></linearGradient>
-            <filter id="glowMint" x="-200%" y="-200%" width="400%" height="400%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-            <filter id="glowRed" x="-200%" y="-200%" width="400%" height="400%"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-          </defs>
-
-          <ellipse class="scene-shadow" cx="480" cy="494" rx="430" ry="38"/>
-          <path class="outer-shell" d="M42 448 130 119 188 62 794 62 850 119 918 448 884 480 67 480Z"/>
-
-          <!-- Muro posterior y su franja azul, como en la maqueta de referencia -->
-          <path class="back-wall" d="M166 72 794 72 794 231 166 231Z"/>
-          <path class="navy-trim" d="M166 181 794 181 794 196 166 196Z"/>
-          <path class="blue-band" d="M166 196 794 196 794 231 166 231Z"/>
-
-<!-- Muros laterales: las franjas siguen la perspectiva y coinciden con el muro posterior -->
-          <path class="side-wall" d="M166 72 78 137 45 456 166 231Z"/>
-          <path class="navy-trim" d="M166 181 55 356 52 386 166 196Z"/>
-          <path class="blue-band" d="M166 196 52 386 45 456 166 231Z"/>
-
-          <!-- Muro derecho con abertura lateral para el acceso -->
-          <path class="side-wall" d="M794 72 857 119 881 393 794 231Z"/>
-          <path class="navy-trim" d="M794 181 873 307 876 333 794 196Z"/>
-          <path class="blue-band" d="M794 196 876 333 881 393 794 231Z"/>
-          <path class="side-wall" d="M875 132 882 137 915 456 905 438Z"/>
-          <path class="navy-trim" d="M875 342 882 356 884 386 876 371Z"/>
-          <path class="blue-band" d="M876 371 884 386 915 456 905 438Z"/>
-
-          <!-- Piso en perspectiva -->
-          <path class="floor" d="M166 231 794 231 915 456 45 456Z"/>
-          <path class="floor-sheen" d="M166 246 794 246M110 426 850 426"/>
-          <path class="floor-sheen" d="M205 238 128 448M750 238 832 448"/>
-
-          <!-- Línea de pared y tres espacios delimitados -->
-          <path d="M198 245 762 245" fill="none" stroke="#eaf0ec" stroke-width="4" opacity=".9"/>
-          <g class="parking-spot" data-slot="0" role="button" tabindex="0" aria-pressed="false" aria-label="Espacio A1, disponible. Selecciona para cambiar estado">
-            <path class="spot-plane" d="M202 250 392 250 408 360 161 360Z"/>
-            <path class="spot-inner" d="M211 258 383 258 396 351 173 351Z"/>
-            <ellipse class="sensor" cx="284" cy="326" rx="45" ry="12"/>
-            <circle class="sensor-light" cx="284" cy="326" r="5"/>
-            <g class="car-model" transform="translate(292 298)">
-              <ellipse cx="0" cy="8" rx="42" ry="61" fill="rgba(0,0,0,.34)"/>
-              <rect class="car-wheel" x="-38" y="-34" width="13" height="35" rx="6"/>
-              <rect class="car-wheel" x="25" y="-34" width="13" height="35" rx="6"/>
-              <rect class="car-wheel" x="-38" y="18" width="13" height="35" rx="6"/>
-              <rect class="car-wheel" x="25" y="18" width="13" height="35" rx="6"/>
-              <path class="car-body" d="M0-65C-18-65-28-55-32-39L-40-7-40 37C-40 51-29 61-16 63L16 63C29 61 40 51 40 37L40-7 32-39C28-55 18-65 0-65Z"/>
-              <path class="car-glass" d="M-24-34Q-20-48-10-50H10Q20-48 24-34L28-10H-28Z"/>
-              <path class="car-glass" d="M-28 1H28V28Q26 39 15 42H-15Q-26 39-28 28Z"/>
-              <path class="car-highlight" d="M-29-29  -35-5V28L-30 37Z"/>
-              <path d="M-20-57Q0-64 20-57" fill="none" stroke="#f2fbfa" stroke-width="3" stroke-linecap="round" opacity=".8"/>
-              <path d="M-23 52H-12M12 52H23" stroke="#f4d1b0" stroke-width="5" stroke-linecap="round"/>
-            </g>
-            <text class="spot-code" x="284" y="382">A1</text>
-            <text class="spot-state" data-status x="284" y="400">DISPONIBLE</text>
-          </g>
-
-          <g class="parking-spot" data-slot="1" role="button" tabindex="0" aria-pressed="false" aria-label="Espacio A2, disponible. Selecciona para cambiar estado">
-            <path class="spot-plane" d="M392 250 584 250 620 360 408 360Z"/>
-            <path class="spot-inner" d="M401 258 576 258 610 351 416 351Z"/>
-            <ellipse class="sensor" cx="510" cy="326" rx="45" ry="12"/>
-            <circle class="sensor-light" cx="510" cy="326" r="5"/>
-            <g class="car-model" transform="translate(510 298)">
-              <ellipse cx="0" cy="8" rx="42" ry="61" fill="rgba(0,0,0,.34)"/>
-              <rect class="car-wheel" x="-38" y="-34" width="13" height="35" rx="6"/>
-              <rect class="car-wheel" x="25" y="-34" width="13" height="35" rx="6"/>
-              <rect class="car-wheel" x="-38" y="18" width="13" height="35" rx="6"/>
-              <rect class="car-wheel" x="25" y="18" width="13" height="35" rx="6"/>
-              <path class="car-body" d="M0-65C-18-65-28-55-32-39L-40-7-40 37C-40 51-29 61-16 63L16 63C29 61 40 51 40 37L40-7 32-39C28-55 18-65 0-65Z"/>
-              <path class="car-glass" d="M-24-34Q-20-48-10-50H10Q20-48 24-34L28-10H-28Z"/>
-              <path class="car-glass" d="M-28 1H28V28Q26 39 15 42H-15Q-26 39-28 28Z"/>
-              <path class="car-highlight" d="M-29-29-35-5V28L-30 37Z"/>
-              <path d="M-20-57Q0-64 20-57" fill="none" stroke="#f2fbfa" stroke-width="3" stroke-linecap="round" opacity=".8"/>
-              <path d="M-23 52H-12M12 52H23" stroke="#f4d1b0" stroke-width="5" stroke-linecap="round"/>
-            </g>
-            <text class="spot-code" x="510" y="382">A2</text>
-            <text class="spot-state" data-status x="510" y="400">DISPONIBLE</text>
-          </g>
-
-          <g class="parking-spot" data-slot="2" role="button" tabindex="0" aria-pressed="false" aria-label="Espacio A3, disponible. Selecciona para cambiar estado">
-            <path class="spot-plane" d="M584 250 762 250 799 360 620 360Z"/>
-            <path class="spot-inner" d="M593 258 754 258 788 351 628 351Z"/>
-            <ellipse class="sensor" cx="700" cy="326" rx="45" ry="12"/>
-            <circle class="sensor-light" cx="700" cy="326" r="5"/>
-            <g class="car-model" transform="translate(700 298)">
-              <ellipse cx="0" cy="8" rx="42" ry="61" fill="rgba(0,0,0,.34)"/>
-              <rect class="car-wheel" x="-38" y="-34" width="13" height="35" rx="6"/>
-              <rect class="car-wheel" x="25" y="-34" width="13" height="35" rx="6"/>
-              <rect class="car-wheel" x="-38" y="18" width="13" height="35" rx="6"/>
-              <rect class="car-wheel" x="25" y="18" width="13" height="35" rx="6"/>
-              <path class="car-body" d="M0-65C-18-65-28-55-32-39L-40-7-40 37C-40 51-29 61-16 63L16 63C29 61 40 51 40 37L40-7 32-39C28-55 18-65 0-65Z"/>
-              <path class="car-glass" d="M-24-34Q-20-48-10-50H10Q20-48 24-34L28-10H-28Z"/>
-              <path class="car-glass" d="M-28 1H28V28Q26 39 15 42H-15Q-26 39-28 28Z"/>
-              <path class="car-highlight" d="M-29-29-35-5V28L-30 37Z"/>
-              <path d="M-20-57Q0-64 20-57" fill="none" stroke="#f2fbfa" stroke-width="3" stroke-linecap="round" opacity=".8"/>
-              <path d="M-23 52H-12M12 52H23" stroke="#f4d1b0" stroke-width="5" stroke-linecap="round"/>
-            </g>
-            <text class="spot-code" x="700" y="382">A3</text>
-            <text class="spot-state" data-status x="700" y="400">DISPONIBLE</text>
-          </g>
-
-<!-- Pasillo central y acceso lateral derecho con barrera -->
-          <path class="lane-arrow" d="M480 438V407M468 419l12-12 12 12"/>
-          <text class="lane-label" x="480" y="463">PASILLO</text>
-          <text class="lane-label" x="909" y="344">ENTRADA</text>
-          <path class="lane-arrow" d="M944 371H868M882 359l-14 12 14 12"/>
-          <g aria-label="Barrera en la entrada derecha">
-            <rect class="gate-post" x="870" y="382" width="18" height="25" rx="4" transform="rotate(-26 879 394.5)"/>
-            <path class="gate-line" d="M883 394 903 433"/>
-            <path class="barrier-stripe" d="M883 394 903 433"/>
-          </g>
-        </svg>
+        <canvas class="live-park-view" id="liveParkView" width="900" height="470" role="img"
+          aria-label="Vista tridimensional del estacionamiento con tres plazas. El estado actual de cada plaza se indica debajo."></canvas>
       </div>
       <div class="scene-caption">
-        <span><strong>Entrada lateral derecha</strong> · Barrera junto a la abertura</span>
-        <span id="updated">Actualizado hace un momento</span>
+        <span><strong>Estado de las plazas:</strong> datos de los sensores, sin controles de simulación</span>
+        <span id="updated">Esperando señal de la placa</span>
       </div>
     </section>
 
-    <section class="controls" aria-label="Controles de demostración">
-      <p class="controls-heading">Simulación</p>
-      <div class="buttons">
-        <button class="btn btn-primary" id="llega" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13.5 5 8a2 2 0 0 1 1.9-1.4h10.2A2 2 0 0 1 19 8l2 5.5"/><path d="M3 13.5h18v4a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/><path d="M6 19v1M18 19v1M6.5 15.5h.01M17.5 15.5h.01"/></svg>
-          Simular llegada
-        </button>
-        <button class="btn btn-secondary" id="sale" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h15"/><path d="m13 6 6 6-6 6"/><path d="M5 5v14"/></svg>
-          Simular salida
-        </button>
-        <button class="btn btn-quiet" id="reset" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4.8 9A8 8 0 0 1 18 5.8L20 7M4 17v-5h5"/><path d="M19.2 15A8 8 0 0 1 6 18.2L4 17"/></svg>
-          Reiniciar demo
-        </button>
-      </div>
-    </section>
+    <div class="live-stalls" aria-label="Ocupación actual de las plazas" aria-live="polite">
+      <div class="live-stall" id="liveSlot1"><span>A1</span><strong>Sin señal</strong></div>
+      <div class="live-stall" id="liveSlot2"><span>A2</span><strong>Sin señal</strong></div>
+      <div class="live-stall" id="liveSlot3"><span>A3</span><strong>Sin señal</strong></div>
+    </div>
 
     <div class="service-row" id="estado">
       <div class="service-copy">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
-        <span id="estadoTxt">Todo listo para estacionar</span>
+        <span id="estadoTxt">Esperando datos del hardware</span>
       </div>
-      <span class="service-meta">Estado de demostración · Sin conexión a sensores</span>
+      <span class="service-meta">Ocupación de sensores · MQTT</span>
     </div>
     </section>
 
@@ -914,10 +765,9 @@
           <span class="live-chip" id="mqP1">Plaza 1: conectando…</span>
           <span class="live-chip" id="mqP2">Plaza 2: conectando…</span>
           <span class="live-chip" id="mqP3">Plaza 3: conectando…</span>
-          <span class="live-chip live-info" id="mqBarr">Barrera: –</span>
           <span class="live-chip live-info" id="mqLibres">– libres</span>
         </div>
-        <p class="firebase-note" id="mqNota">Los datos llegan directo de la placa Arduino (MQTT), sin iniciar sesión.</p>
+        <p class="firebase-note" id="mqNota">Esperando estado de la placa Arduino por MQTT.</p>
       </div>
       <div class="booking-grid">
         <form class="booking-card" id="bookingForm">
@@ -972,7 +822,7 @@
       <p class="auth-message" id="authMessage" role="status" aria-live="polite"></p>
       <p class="config-warning" id="authConfigWarning"></p>
     </dialog>
-    <footer class="footer"><span>Parking S2 · Modelo demostrativo</span><span>Los cambios se reinician al recargar la página</span></footer>
+    <footer class="footer"><span>Parking S2 · Ocupación en vivo</span><span>Estados enviados por los sensores Arduino</span></footer>
   </main>
 
   <!-- ===== Asistente de voz ParkNet (voz web, libre) ===== -->
@@ -995,116 +845,91 @@
     </div>
   </div>
 
+  <script src="./parking-live-view.js?v=hardware-v1"></script>
   <script>
     (function () {
       "use strict";
-      var TOTAL = 3;
-      var ocupados = [false, false, false];
-      var ultimaActualizacion = Date.now();
+      var states = [null, null, null];
+      var lastAt = 0;
       var $ = function (id) { return document.getElementById(id); };
-      var espacios = Array.prototype.slice.call(document.querySelectorAll(".parking-spot"));
-
-      function actualizarHora() {
+      function clock() {
         $("hora").textContent = new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
       }
-
-      function actualizarTiempo() {
-        var minutos = Math.floor((Date.now() - ultimaActualizacion) / 60000);
-        var texto = minutos < 1
-          ? "Actualizado hace un momento"
-          : "Actualizado hace " + minutos + (minutos === 1 ? " minuto" : " minutos");
-        $("updated").textContent = texto;
+      function updated() {
+        if (!lastAt) return;
+        var seconds = Math.floor((Date.now() - lastAt) / 1000);
+        $("updated").textContent = seconds < 5 ? "Actualizado ahora" :
+          "Última señal hace " + seconds + " s";
+        if (seconds > 75) disconnect("Sin señal reciente de la placa");
       }
-
       function render() {
-        var libres = ocupados.filter(function (ocupado) { return !ocupado; }).length;
-        var usados = TOTAL - libres;
-
-        $("libres").textContent = String(libres);
-        $("titulo").textContent = libres === 0
-          ? "Estacionamiento completo"
-          : libres === 1 ? "Queda 1 lugar disponible" : "Hay " + libres + " lugares disponibles";
-        $("sub").textContent = libres === 0
-          ? "No quedan espacios libres. Registra una salida o reinicia la demostración."
-          : libres === TOTAL
-            ? "Los tres espacios están libres. Selecciona uno en el modelo para probarlo."
-            : "El modelo muestra qué lugares están libres y cuáles tienen un vehículo.";
-        if (document.body.classList.contains("firebase-live")) {
-          $("sub").textContent = "Reservas sincronizadas para la fecha y hora elegidas en la pestaña Reservar.";
-        }
-        $("resumen").textContent = libres + " de " + TOTAL + " libres";
-        $("seg").setAttribute("aria-label", libres + " de " + TOTAL + " espacios disponibles");
-        $("estadoTxt").textContent = libres === 0 ? "Estacionamiento completo" : "Todo listo para estacionar";
-        $("estado").classList.toggle("is-full", libres === 0);
-        $("llega").disabled = libres === 0;
-        $("sale").disabled = libres === TOTAL;
-
-        $("seg").innerHTML = ocupados.map(function (ocupado) {
-          return '<i class="meter-segment ' + (ocupado ? "is-occupied" : "is-free") + '"></i>';
+        var complete = states.every(function (state) { return state !== null; });
+        var free = states.filter(function (state) { return state === 0; }).length;
+        $("libres").textContent = complete ? String(free) : "–";
+        $("titulo").textContent = complete ?
+          (free === 0 ? "Estacionamiento completo" : free === 1 ? "Queda 1 lugar disponible" :
+            "Hay " + free + " lugares disponibles") : "Esperando datos de la placa";
+        $("sub").textContent = complete ?
+          "La ocupación cambia cuando los sensores detectan una llegada o salida." :
+          "Aún no hay datos actuales para las tres plazas.";
+        $("resumen").textContent = complete ? free + " de 3 libres" : "Esperando sensores";
+        $("seg").setAttribute("aria-label", complete ? free + " de 3 espacios disponibles" :
+          "Esperando datos de los espacios");
+        $("seg").innerHTML = states.map(function (state) {
+          return '<i class="meter-segment ' + (state === null ? '' :
+            state === 1 ? 'is-occupied' : 'is-free') + '"></i>';
         }).join("");
-
-        espacios.forEach(function (espacio, index) {
-          var ocupado = ocupados[index];
-          var nombre = "A" + (index + 1);
-          var remote = document.body.classList.contains("firebase-live");
-          var estado = ocupado ? (remote ? "reservado" : "ocupado") : "disponible";
-          espacio.classList.toggle("is-occupied", ocupado);
-          espacio.setAttribute("aria-pressed", ocupado ? "true" : "false");
-          espacio.setAttribute("aria-label", "Espacio " + nombre + ", " + estado + ". Selecciona para cambiar estado");
-          espacio.querySelector("[data-status]").textContent = ocupado ? (remote ? "RESERVADO" : "OCUPADO") : "DISPONIBLE";
+        states.forEach(function (state, index) {
+          var el = $("liveSlot" + (index + 1));
+          el.className = "live-stall " + (state === null ? "is-unknown" :
+            state === 1 ? "is-occupied" : "is-free");
+          el.querySelector("strong").textContent = state === null ? "Sin señal" :
+            state === 1 ? "Ocupada" : "Libre";
         });
-
-        ultimaActualizacion = Date.now();
-        actualizarTiempo();
+        $("estadoTxt").textContent = complete ?
+          (free === 0 ? "Las tres plazas están ocupadas" : "Sensores en vivo: " + free + " plazas libres") :
+          "Esperando datos del hardware";
+        $("estado").classList.toggle("is-full", complete && free === 0);
+        $("livePill").classList.toggle("is-offline", !complete);
+        $("livePillLabel").textContent = complete ? "Sensores en vivo" : "Esperando placa";
       }
-
-      window.updateParkingFromFirestore = function (states) {
-        ocupados = states.slice(0, TOTAL);
-        document.body.classList.add("firebase-live");
-        render();
+      function disconnect(message) {
+        if (lastAt || states.some(function (state) { return state !== null; })) {
+          states = [null, null, null];
+          lastAt = 0;
+          render();
+          window.ParkNetLiveView?.disconnect();
+        }
+        $("updated").textContent = message || "Esperando señal de la placa";
+        [1, 2, 3].forEach(function (index) {
+          var chip = $("mqP" + index);
+          chip.textContent = "Plaza " + index + ": SIN SEÑAL";
+          chip.className = "live-chip";
+        });
+        $("mqLibres").textContent = "Esperando sensores";
+        $("mqNota").textContent = message || "Esperando estado de la placa Arduino por MQTT.";
+        window.__PN_ESTADO = { p1: null, p2: null, p3: null, barrera: null, libres: null };
+      }
+      window.ParkNetDashboard = {
+        updateFromHardware: function (raw) {
+          if (!Array.isArray(raw)) return false;
+          var next = [0, 1, 2].map(function (index) {
+            return raw[index] === 0 || raw[index] === 1 ? raw[index] : null;
+          });
+          if (next.every(function (state) { return state === null; })) return false;
+          states = next;
+          lastAt = Date.now();
+          render();
+          window.ParkNetLiveView?.update(states);
+          updated();
+          return true;
+        },
+        disconnect: disconnect
       };
-      window.restoreParkingDemo = function () {
-        document.body.classList.remove("firebase-live");
-        ocupados = [false, false, false];
-        render();
-      };
-
-      function alternarEspacio(indice) {
-        ocupados[indice] = !ocupados[indice];
-        render();
-      }
-
-      function cambiarEstado(marcarOcupado) {
-        var candidatos = [];
-        ocupados.forEach(function (ocupado, index) {
-          if (ocupado !== marcarOcupado) candidatos.push(index);
-        });
-        if (!candidatos.length) return;
-        var elegido = candidatos[Math.floor(Math.random() * candidatos.length)];
-        ocupados[elegido] = marcarOcupado;
-        render();
-      }
-
-      espacios.forEach(function (espacio, index) {
-        espacio.addEventListener("click", function () { alternarEspacio(index); });
-        espacio.addEventListener("keydown", function (event) {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            alternarEspacio(index);
-          }
-        });
-      });
-      $("llega").addEventListener("click", function () { cambiarEstado(true); });
-      $("sale").addEventListener("click", function () { cambiarEstado(false); });
-      $("reset").addEventListener("click", function () {
-        ocupados = [false, false, false];
-        render();
-      });
-
-      actualizarHora();
+      clock();
       render();
-      window.setInterval(actualizarHora, 15000);
-      window.setInterval(actualizarTiempo, 15000);
+      window.setInterval(clock, 15000);
+      window.setInterval(updated, 5000);
     }());
   </script>
   <script src="https://www.gstatic.com/firebasejs/13.2.0/firebase-app-compat.js"></script>
@@ -1184,9 +1009,6 @@
         document.querySelectorAll(".space-choice").forEach(function (button) {
           button.setAttribute("aria-pressed", button.dataset.space === selectedSpace ? "true" : "false");
         });
-        document.querySelectorAll(".parking-spot").forEach(function (spot, index) {
-          spot.classList.toggle("is-selected", spaces[index] === selectedSpace);
-        });
       }
       function renderAvailability(loading, error) {
         var list = $("availabilityList");
@@ -1262,7 +1084,6 @@
         renderAvailability(loading, false);
         renderChoices(loading, false);
         updateReserveButton(loading, false);
-        if (window.restoreParkingDemo) window.restoreParkingDemo();
         if (!loading || !db) return;
         var loaded = [false, false, false];
         listeners = spaces.map(function (spaceId, index) {
@@ -1274,9 +1095,6 @@
             renderAvailability(stillLoading, false);
             renderChoices(stillLoading, false);
             updateReserveButton(stillLoading, false);
-            if (!stillLoading && window.updateParkingFromFirestore) {
-              window.updateParkingFromFirestore(occupied);
-            }
           }, function () {
             renderAvailability(false, true);
             renderChoices(false, true);
@@ -1403,16 +1221,6 @@
         pintaFoto(userValue);
         $("loginPrompt").hidden = !!user;
         $("bookingFields").disabled = !user || !db;
-        document.querySelector(".controls").hidden = !!(user && db);
-        $("estadoTxt").textContent = !configured
-          ? "Firebase pendiente de configuración"
-          : user ? "Reservas sincronizadas" : "Inicia sesión para ver las reservas";
-        document.querySelector(".service-meta").textContent = !configured
-          ? "Completa firebaseConfig y publica firestore.rules"
-          : "Authentication y Firestore";
-        document.querySelector(".footer span:last-child").textContent = user && db
-          ? "Reservas sincronizadas con Firestore"
-          : "La simulación local se reinicia al recargar";
         if (user) {
           if ($("authDialog").open) $("authDialog").close();
           subscribeBookings();
@@ -1680,83 +1488,70 @@
         refreshAvailability();
       });
 
-      /* ===== estado en vivo del estacionamiento (MQTT, sin login) =====
-         La placa publica iot/fixmol/estado (JSON) y plazas (numero). Cualquier
-         visitante lo ve: LIBRE u OCUPADA en tiempo real. */
+      /* La ocupación visible procede únicamente del estado completo de la placa. */
       var mqCli = null, mqIdx = 0, mqTimer = null;
-      var MQ_E = "iot/fixmol/estado", MQ_P = "iot/fixmol/plazas";
-      var MQ_BROKERS = ["wss://broker.hivemq.com:8884/mqtt",
+      var MQ_E = "iot/fixmol/estado";
+      var MQ_BROKERS = ["wss://test.mosquitto.org:8081",
+                        "wss://broker.hivemq.com:8884/mqtt",
                         "wss://broker.emqx.io:8084/mqtt"];
-      function mqChip(id, ocupada, base) {
+      function mqChip(id, state, base) {
         var el = $(id);
         if (!el) return;
-        el.textContent = base + ": " + (ocupada ? "OCUPADA" : "LIBRE");
-        el.className = "live-chip " + (ocupada ? "occ" : "libre");
+        el.textContent = base + ": " + (state === null ? "SIN SEÑAL" :
+          state === 1 ? "OCUPADA" : "LIBRE");
+        el.className = "live-chip " + (state === null ? "" : state === 1 ? "occ" : "libre");
       }
       function mqEstado(d) {
-        mqChip("mqP1", d.ocupadas && d.ocupadas[0] === 1, "Plaza 1");
-        mqChip("mqP2", d.ocupadas && d.ocupadas[1] === 1, "Plaza 2");
-        mqChip("mqP3", d.ocupadas && d.ocupadas[2] === 1, "Plaza 3");
-        var b = $("mqBarr");
-        if (b) b.textContent = "Barrera: " + (d.barrera || "–");
-        var l = $("mqLibres");
-        if (l) l.textContent = (d.libres != null ? d.libres : "–") + " / " + (d.total || 3) + " libres";
+        if (!d || !Array.isArray(d.ocupadas)) return;
+        var states = [0, 1, 2].map(function (index) {
+          return d.ocupadas[index] === 0 || d.ocupadas[index] === 1 ?
+            d.ocupadas[index] : null;
+        });
+        if (!window.ParkNetDashboard.updateFromHardware(states)) return;
+        mqChip("mqP1", states[0], "Plaza 1");
+        mqChip("mqP2", states[1], "Plaza 2");
+        mqChip("mqP3", states[2], "Plaza 3");
+        var complete = states.every(function (state) { return state !== null; });
+        $("mqLibres").textContent = complete ?
+          states.filter(function (state) { return state === 0; }).length + " / 3 libres" :
+          "Esperando sensores";
         var n = $("mqNota");
         if (n) n.textContent = "Señal de la placa a las " + new Date().toLocaleTimeString() + " (MQTT).";
-        if (window.__PN_ESTADO) {
-          window.__PN_ESTADO = { p1: d.ocupadas && d.ocupadas[0], p2: d.ocupadas && d.ocupadas[1], p3: d.ocupadas && d.ocupadas[2], barrera: d.barrera, libres: d.libres };
-        }
+        window.__PN_ESTADO = { p1: states[0], p2: states[1], p3: states[2],
+          barrera: d.barrera, libres: complete ? states.filter(function (state) { return state === 0; }).length : null };
       }
       function mqConectar() {
-        if (typeof mqtt === "undefined") return;
+        if (typeof mqtt === "undefined") {
+          window.ParkNetDashboard.disconnect("No se pudo conectar al servicio MQTT");
+          return;
+        }
         if (mqIdx >= MQ_BROKERS.length) { mqIdx = 0; }
         var url = MQ_BROKERS[mqIdx];
         try { if (mqCli) mqCli.end(true); } catch (e) {}
-        mqCli = mqtt.connect(url, {
+        var client = mqtt.connect(url, {
           clientId: "web-parknet-" + Math.random().toString(16).slice(2, 8),
           connectTimeout: 8000, reconnectPeriod: 0
         });
-        mqCli.on("connect", function () {
-          clearInterval(mqTimer);
-          mqCli.subscribe([MQ_E, MQ_P]);
+        mqCli = client;
+        client.on("connect", function () {
+          if (mqCli !== client) return;
+          clearTimeout(mqTimer);
+          client.subscribe(MQ_E);
+          $("mqNota").textContent = "Conectado al broker; esperando el próximo estado de la placa.";
         });
-        mqCli.on("close", function () {
-          clearInterval(mqTimer);
+        client.on("close", function () {
+          if (mqCli !== client) return;
+          clearTimeout(mqTimer);
+          window.ParkNetDashboard.disconnect("Conexión MQTT interrumpida");
           mqTimer = setTimeout(function () { mqIdx++; mqConectar(); }, 5000);
         });
-        mqCli.on("error", function () { try { mqCli.end(true); } catch (e) {} });
-        mqCli.on("message", function (t, m) {
-          if (t === MQ_P) {
-            var q = parseInt(m.toString(), 10);
-            if (!isNaN(q) && $("mqLibres")) $("mqLibres").textContent = q + " / 3 libres";
-            return;
-          }
+        client.on("error", function () { try { client.end(true); } catch (e) {} });
+        client.on("message", function (t, m) {
+          if (mqCli !== client) return;
           if (t === MQ_E) { try { mqEstado(JSON.parse(m.toString())); } catch (e) {} }
         });
       }
       mqConectar();
-      document.addEventListener("click", function (event) {
-        var spot = event.target.closest && event.target.closest(".parking-spot");
-        if (!configured || !spot) return;
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        var index = Number(spot.getAttribute("data-slot"));
-        if (!user) { openAuth("login"); return; }
-        selectedSpace = spaces[index];
-        updateSelection();
-        switchTab("booking");
-      }, true);
-      document.addEventListener("keydown", function (event) {
-        var spot = event.target.closest && event.target.closest(".parking-spot");
-        if (!configured || !spot || (event.key !== "Enter" && event.key !== " ")) return;
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        var index = Number(spot.getAttribute("data-slot"));
-        if (!user) { openAuth("login"); return; }
-        selectedSpace = spaces[index];
-        updateSelection();
-        switchTab("booking");
-      }, true);
 
       initializeDateTime();
       renderChoices(false, false);
@@ -1788,7 +1583,8 @@
     */
     (function () {
       "use strict";
-      window.__PN_ESTADO = { p1: null, p2: null, p3: null, barrera: null, libres: null };
+      window.__PN_ESTADO = window.__PN_ESTADO ||
+        { p1: null, p2: null, p3: null, barrera: null, libres: null };
       var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
       var soporte = !!SR && !!window.speechSynthesis;
       var $v = function (id) { return document.getElementById(id); };
@@ -1867,6 +1663,9 @@
         var libres = 0;
         [e.p1, e.p2, e.p3].forEach(function (o) { if (o === 0) libres++; });
         function respPlace() {
+          if ([e.p1, e.p2, e.p3].some(function (o) { return o !== 0 && o !== 1; })) {
+            return "Todavía no recibo una señal actual de los tres sensores del estacionamiento.";
+          }
           return "ParkNet informa: hay " + libres + " de 3 plazas libres en este momento. " +
             (e.p1 === 0 ? "Plaza uno libre. " : "Plaza uno ocupada. ") +
             (e.p2 === 0 ? "Plaza dos libre. " : "Plaza dos ocupada. ") +

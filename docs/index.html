@@ -1494,17 +1494,23 @@
       var MQ_BROKERS = ["wss://test.mosquitto.org:8081",
                         "wss://broker.hivemq.com:8884/mqtt",
                         "wss://broker.emqx.io:8084/mqtt"];
+      // Lógica de sensores (idéntica al admin.html):
+      //   1 = OCUPADA = sensor obstruido = LED APAGADO
+      //   0 = LIBRE   = sensor despejado = LED ENCENDIDO
+      var ESTADO_OCUPADA = 1;
+      var ESTADO_LIBRE = 0;
+
       function mqChip(id, state, base) {
         var el = $(id);
         if (!el) return;
         el.textContent = base + ": " + (state === null ? "SIN SEÑAL" :
-          state === 1 ? "OCUPADA" : "LIBRE");
-        el.className = "live-chip " + (state === null ? "" : state === 1 ? "occ" : "libre");
+          state === ESTADO_OCUPADA ? "OCUPADA" : "LIBRE");
+        el.className = "live-chip " + (state === null ? "" : state === ESTADO_OCUPADA ? "occ" : "libre");
       }
       function mqEstado(d) {
         if (!d || !Array.isArray(d.ocupadas)) return;
         var states = [0, 1, 2].map(function (index) {
-          return d.ocupadas[index] === 0 || d.ocupadas[index] === 1 ?
+          return d.ocupadas[index] === ESTADO_LIBRE || d.ocupadas[index] === ESTADO_OCUPADA ?
             d.ocupadas[index] : null;
         });
         if (!window.ParkNetDashboard.updateFromHardware(states)) return;

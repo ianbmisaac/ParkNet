@@ -30,7 +30,7 @@ const URLS = [
 ];
 const NOMBRES = ['local', 'mosquitto', 'hivemq', 'emqx'];
 const TOPIC = 'iot/fixmol/#';
-const VENTANA_MS = 5000;   // anti-bucle
+const VENTANA_MS = 2000;   // anti-bucle (un round-trip tarda <1 s)
 
 const vistos = new Map();
 const clients = [];

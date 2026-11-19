@@ -566,7 +566,7 @@
             <label class="field">Fecha<input id="bookingDate" type="date" required></label>
             <label class="field">Hora de inicio<input id="bookingTime" type="time" step="3600" required></label>
           </fieldset>
-          <p class="duration-note">Duración fija: 1 hora · Hora local</p>
+          <p class="duration-note">Bloques de 1 hora · Los minutos siempre se muestran <strong>:00</strong> (ej. 03:00 = 03:00–04:00). Puedes reservar la hora en curso.</p>
           <h3>Selecciona un espacio</h3>
           <div class="space-picker" id="spaceChoices" role="group" aria-label="Selecciona un estacionamiento"></div>
           <button class="reserve-button" id="reserveButton" type="submit" disabled>Reservar espacio</button>
@@ -807,8 +807,8 @@
       function initializeDateTime() {
         var now = new Date();
         $("bookingDate").min = localDate(now);
-        now.setMinutes(0, 0, 0);
-        now.setHours(now.getHours() + 1);
+        // La reserva es por bloque horario: se permite la HORA EN CURSO.
+        // Los minutos se fuerzan a :00 a proposito (03:50 -> bloque 03:00-04:00).
         $("bookingDate").value = localDate(now);
         $("bookingTime").value = pad(now.getHours()) + ":00";
       }
@@ -840,7 +840,7 @@
           return;
         }
         if (loading || !validSlot()) {
-          addAvailabilityMessage(loading ? "Consultando disponibilidad…" : "Elige una fecha futura y una hora en punto.");
+          addAvailabilityMessage(loading ? "Consultando disponibilidad…" : "Elige una fecha y hora válidas (bloques de 1 hora).");
           return;
         }
         spaces.forEach(function (spaceId, index) {
@@ -1128,7 +1128,7 @@
         var date = $("bookingDate").value;
         var hour = hourValue();
         var spaceId = selectedSpace;
-        if (!validSlot()) { setMessage("Elige una fecha futura y una hora en punto.", "error"); return; }
+        if (!validSlot()) { setMessage("Elige una fecha y hora válidas (bloques de 1 hora).", "error"); return; }
         var key = slotKey(spaceId, date, hour);
         var slotRef = db.collection("slots").doc(key);
         var bookings = db.collection("users").doc(user.uid).collection("reservations");

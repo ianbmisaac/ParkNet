@@ -437,13 +437,8 @@ async function validarTokenQr(payload) {
     if (d.status !== "active") { muestraQr("La reserva no está activa (cancelada).", false); return; }
     if (slotEsperado && d.slotKey !== slotEsperado) { muestraQr("El QR no coincide con la reserva.", false); return; }
     const hoy = fechaStr(new Date());
-    const horaAhora = new Date().getHours();
     if (d.date !== hoy) { muestraQr("La reserva es para " + d.date + " (hoy es " + hoy + ").", false); return; }
-    const h = Number(d.hour);
-    if (horaAhora !== h && horaAhora !== h + 1) {
-      muestraQr("Aún no es tu hora: reserva " + h + ":00–" + (h+1) + ":00 (ahora son las " + horaAhora + ":00).", false);
-      return;
-    }
+    // la hora ya no bloquea: el portón se abre con la reserva del día, siempre
     // VALIDA ✓ → ofrece abrir
     let resp;
     try { resp = await db.collection("users").doc(d.userId).collection("profile").doc("main").get(); } catch (e) { resp = null; }

@@ -1084,7 +1084,8 @@
             var snapshot = await transaction.get(slotRef);
             if (snapshot.exists) throw new Error("SLOT_TAKEN");
             transaction.set(slotRef, {
-              spaceId: spaceId, date: date, hour: hour, bookingId: bookingRef.id
+              spaceId: spaceId, date: date, hour: hour, bookingId: bookingRef.id,
+              userId: user.uid
             });
             transaction.set(bookingRef, {
               bookingId: bookingRef.id, slotKey: key, spaceId: spaceId,

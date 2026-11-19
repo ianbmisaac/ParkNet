@@ -415,13 +415,24 @@ async function validarTokenQr(payload) {
   pin = String(pin).trim();
   if (!/^[0-9]{6}$/.test(pin)) { muestraQr("El QR/code no parece de ParkNet.", false); return; }
   const slotEsperado = partes.length >= 3 ? partes[1] : null;
+  if (!slotEsperado) {
+    muestraQr("Solo puedo validar el QR completo de la reserva, no un PIN suelto.", false);
+    return;
+  }
   muestraQr("validando PIN " + pin + " …", null, true);
   if (scanning) apagarCamara();                    // pausa la camara al leer algo
   try {
-    const snap = await db.collectionGroup("reservations").where("pin", "==", pin).limit(5).get();
-    const filas = snap.docs.map(d => ({ ref: d.ref, data: d.data() }));
-    if (!filas.length) { muestraQr("PIN no existe (ninguna reserva lo usa).", false); return; }
-    const r = filas.find(x => !slotEsperado || x.data.slotKey === slotEsperado) || filas[0];
+    // sin collectionGroup: el slot trae bookingId + userId
+    const sd = await db.collection("slots").doc(slotEsperado).get();
+    if (!sd.exists) { muestraQr("QR no coincide: la reserva no existe o ya fue cancelada.", false); return; }
+    const s = sd.data();
+    if (!s.userId || !s.bookingId) {
+      muestraQr("Esa reserva viene de antes del cambio: crea una reserva nueva para usar el QR.", false); return;
+    }
+    const rs = await db.collection("users").doc(s.userId).collection("reservations").doc(s.bookingId).get();
+    if (!rs.exists) { muestraQr("No encuentro la reserva enlazada a ese QR.", false); return; }
+    const filas = [{ ref: rs.ref, data: rs.data() }];
+    const r = filas[0];
     const d = r.data;
     if (d.status !== "active") { muestraQr("La reserva no está activa (cancelada).", false); return; }
     if (slotEsperado && d.slotKey !== slotEsperado) { muestraQr("El QR no coincide con la reserva.", false); return; }
@@ -519,26 +530,35 @@ function subscribirReservas() {
   if (!user || !esAdmin) return;
   msgRes("cargando reservas activas…");
   cargarHistorial("todas");
-  // collectionGroup: mira TODAS las sub-colecciones reservations (regla: isAdmin)
-  const v = db.collectionGroup("reservations").where("status","==","active").onSnapshot(snap => {
-    const rows = snap.docs.map(d => ({ ref: d.ref, data: d.data() }));
-    rows.sort((a,b) => (a.data.date+a.data.hour).localeCompare(b.data.date+b.data.hour));
-    const lista = $("reservas"); lista.innerHTML = "";
-    if (!rows.length) lista.innerHTML = '<span class="muted">no hay reservas activas</span>';
-    rows.forEach(r => {
-      const d = r.data;
-      const item = document.createElement("div"); item.className = "item";
-      const fecha = new Date(d.date + "T00:00:00").toLocaleDateString("es-CL",
-        { day:"numeric", month:"short", year:"numeric" });
-      item.innerHTML = "<span><strong>Espacio " + d.spaceId + "</strong> · " + fecha +
-        " · " + d.hour + ":00–" + pad(Number(d.hour)+1) + ":00" +
-        '<br><span class="muted" style="font-size:.8rem">usuario: ' + d.userId.slice(0,8) + "…</span></span>";
-      const b = document.createElement("button"); b.className = "rojo"; b.textContent = "anular";
-      b.onclick = () => anular(r);
-      item.appendChild(b); lista.appendChild(item);
-    });
-    msgRes("");
-  }, e => { msgRes("no se pudo listar (¿collectionGroup habilitado? ¿reglas admin?): " + e.code); });
+  // Estrategia sin collectionGroup: cada slot activo tiene su bookingId y
+  // userId (la reserva en sí pasa sus reglas por ser de su dueño).
+  const v = db.collection("slots").onSnapshot(async snap => {
+    try {
+      const slots = snap.docs.map(d => d.data()).filter(s => s.userId);
+      const reads = slots.map(s =>
+        db.collection("users").doc(s.userId).collection("reservations").doc(s.bookingId).get()
+      );
+      const rs = await Promise.all(reads);
+      const rows = rs.filter(r => r.exists && r.data().status === "active")
+        .map(r => ({ ref: r.ref, data: r.data() }));
+      rows.sort((a,b) => (a.data.date + a.data.hour).localeCompare(b.data.date + b.data.hour));
+      const lista = $("reservas"); lista.innerHTML = "";
+      if (!rows.length) lista.innerHTML = '<span class="muted">no hay reservas activas</span>';
+      rows.forEach(r => {
+        const d = r.data;
+        const item = document.createElement("div"); item.className = "item";
+        const fecha = new Date(d.date + "T00:00:00").toLocaleDateString("es-CL",
+          { day:"numeric", month:"short", year:"numeric" });
+        item.innerHTML = "<span><strong>Espacio " + d.spaceId + "</strong> · " + fecha +
+          " · " + d.hour + ":00–" + pad(Number(d.hour)+1) + ":00" +
+          '<br><span class="muted" style="font-size:.8rem">usuario: ' + d.userId.slice(0,8) + "…</span></span>";
+        const b = document.createElement("button"); b.className = "rojo"; b.textContent = "anular";
+        b.onclick = () => anular(r);
+        item.appendChild(b); lista.appendChild(item);
+      });
+      msgRes("");
+    } catch (e) { msgRes("no se pudo cargar: " + e.code); }
+  }, e => { msgRes("no se pudo escuchar slots: " + e.code); });
   resView = v;
 }
 
@@ -612,15 +632,22 @@ async function anular(r) {
   } catch (e) { msgRes("no se pudo anular: " + e.message); }
 }
 
-/* ===== historial completo de reservas (todas las cuentas) ===== */
+/* ===== historial de la sesión (reservas activas visibles + anota atrasadas) ===== */
 let historialCache = [];
 async function cargarHistorial(filtro) {
   const lista = $("historial"), msg = $("msgHist");
   if (!user || !esAdmin) return;
   msg.textContent = "cargando…"; lista.innerHTML = "";
   try {
-    const snap = await db.collectionGroup("reservations").limit(200).get();
-    historialCache = snap.docs.map(d => d.data());
+    // slots: reservaActivas visibles por el bloqueo; las canceladas no se ven
+    // (este enfoque solo muestra las que siguen con bloqueo).
+    const slotSnap = await db.collection("slots").get();
+    const slots = slotSnap.docs.map(d => d.data()).filter(s => s.userId && s.bookingId);
+    const reads = slots.map(s =>
+      db.collection("users").doc(s.userId).collection("reservations").doc(s.bookingId).get()
+    );
+    const rs = await Promise.all(reads);
+    historialCache = rs.filter(r => r.exists).map(r => r.data());
     pintarHistorial(filtro);
   } catch (e) { msg.textContent = "no se pudo cargar: " + e.code; }
 }

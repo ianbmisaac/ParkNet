@@ -7,15 +7,14 @@ service cloud.firestore {
 
     // ROL ADMINISTRADOR: dos formas validas (con cualquiera vale):
     //   1) doc admins/<uid> con admin == true (los originales, creados en consola)
-    //   2) doc admins/<correo-en-minusculas> con admin == true:
-    //      un admin promueve a otros escribiendo SOLO el correo desde el panel.
+    //   2) doc admins/<correo en minusculas> con admin == true
+    function isAdminDoc(path) {
+      return exists(path) && get(path).data.admin == true;
+    }
     function isAdmin() {
       return signedIn() && (
-        (exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-          && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.admin == true)
-        || (request.auth.token.email != null
-          && exists(/databases/$(database)/documents/admins/$(request.auth.token.email.toLower()))
-          && get(/databases/$(database)/documents/admins/$(request.auth.token.email.toLower())).data.admin == true)
+        isAdminDoc(/databases/$(database)/documents/admins/$(request.auth.uid))
+        || isAdminDoc(/databases/$(database)/documents/admins/$(request.auth.token.email))
       );
     }
 
@@ -37,8 +36,9 @@ service cloud.firestore {
 
       // A slot lock and the owner's private reservation must be written atomically.
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['spaceId', 'date', 'hour', 'bookingId'])
-        && request.resource.data.keys().hasAll(['spaceId', 'date', 'hour', 'bookingId'])
+        && request.resource.data.keys().hasOnly(['spaceId', 'date', 'hour', 'bookingId', 'userId'])
+        && request.resource.data.keys().hasAll(['spaceId', 'date', 'hour', 'bookingId', 'userId'])
+        && request.resource.data.userId == request.auth.uid
         && validSpace(request.resource.data.spaceId)
         && validDate(request.resource.data.date)
         && validHour(request.resource.data.hour)
@@ -58,8 +58,6 @@ service cloud.firestore {
     // Registro de administradores.
     // Leer: cualquier sesion. Crear: SOLO un admin actual y solo documentos
     // con ID = correo en minusculas, admin==true y campos exactos.
-    // Borrar: otro admin; nadie puede quitarse el rol a si mismo (el admin
-    // 'siempre' no pierde el rol ni por accidente).
     match /admins/{adminId} {
       allow read: if signedIn();
       allow create: if isAdmin()
@@ -67,7 +65,7 @@ service cloud.firestore {
         && request.resource.data.admin == true
         && request.resource.data.email is string
         && request.resource.data.email.matches('^[^@]+@[^@]+\\.[^@]+$')
-        && adminId == request.resource.data.email.toLower();
+        && adminId == request.resource.data.email;
       allow update: if false;
       allow delete: if isAdmin()
         && resource.data.email != request.auth.token.email;

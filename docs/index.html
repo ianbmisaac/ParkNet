@@ -851,6 +851,9 @@
       "use strict";
       var states = [null, null, null];
       var lastAt = 0;
+      // Igual que admin.html: P1_VISOR_INVERTIDO = true invierte la lectura
+      // del visor 3D de P1 para que coincida con el estado real del sensor.
+      var P1_VISOR_INVERTIDO = true;
       var $ = function (id) { return document.getElementById(id); };
       function clock() {
         $("hora").textContent = new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
@@ -920,7 +923,13 @@
           states = next;
           lastAt = Date.now();
           render();
-          window.ParkNetLiveView?.update(states);
+          // Aplica la misma inversión de P1 que admin.html para que el
+          // modelo 3D de index.html coincida exactamente con el admin.
+          var estado3d = states.slice();
+          if (P1_VISOR_INVERTIDO && estado3d[0] !== undefined && estado3d[0] !== null) {
+            estado3d[0] = 1 - estado3d[0];
+          }
+          window.ParkNetLiveView?.update(estado3d);
           updated();
           return true;
         },

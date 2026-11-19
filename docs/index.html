@@ -1321,8 +1321,7 @@
          visitante lo ve: LIBRE u OCUPADA en tiempo real. */
       var mqCli = null, mqIdx = 0, mqTimer = null;
       var MQ_E = "iot/fixmol/estado", MQ_P = "iot/fixmol/plazas";
-      var MQ_BROKERS = ["wss://test.mosquitto.org:8081",
-                        "wss://broker.hivemq.com:8884/mqtt",
+      var MQ_BROKERS = ["wss://broker.hivemq.com:8884/mqtt",
                         "wss://broker.emqx.io:8084/mqtt"];
       function mqChip(id, ocupada, base) {
         var el = $(id);

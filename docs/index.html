@@ -204,6 +204,40 @@
     .page-tab { min-height: 38px; padding: 0 16px; border: 0; border-radius: 10px; color: var(--muted); background: transparent; font-size: .8rem; font-weight: 700; cursor: pointer; }
     .page-tab[aria-selected="true"] { color: #09251b; background: var(--mint); }
     #dashboardView[hidden], .booking-view[hidden] { display: none !important; }
+    /* ===== asistente de voz ParkNet ===== */
+    .voz-boton { position: fixed; right: 18px; bottom: 18px; z-index: 1000;
+      width: 62px; height: 62px; border-radius: 50%; border: 1px solid var(--line);
+      background: linear-gradient(160deg,#17815f,#0e4030); color: #eafbf2; font-size: 1.55rem;
+      box-shadow: 0 6px 28px rgba(53,217,154,.25), 0 0 0 0 rgba(53,217,154,.6);
+      cursor: pointer; display: grid; place-items: center;
+      animation: vozPulsa 2.6s ease-in-out infinite; }
+    .voz-boton:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
+    @keyframes vozPulsa { 0%,100% { box-shadow: 0 6px 28px rgba(53,217,154,.25), 0 0 0 0 rgba(53,217,154,.5);} 50% { box-shadow: 0 6px 28px rgba(53,217,154,.4), 0 0 0 8px rgba(53,217,154,0); } }
+    .voz-dialog { position: fixed; right: 16px; bottom: 92px; z-index: 1000; width: min(360px, calc(100vw - 32px));
+      border-radius: 22px; border: 1px solid var(--line); padding: 14px 16px;
+      background: rgba(14, 25, 35, .97); backdrop-filter: blur(10px);
+      box-shadow: 0 18px 60px rgba(0,0,0,.55); animation: vozEntrar .22s ease; }
+    @keyframes vozEntrar { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+    .voz-emisor { display: grid; gap: 6px; justify-items: center; text-align: center; }
+    .voz-avatar { font-size: 2.1rem; animation: vozBob 1.6s ease-in-out infinite; }
+    @keyframes vozBob { 0%,100% { transform: translateY(0);} 50% { transform: translateY(-6px);} }
+    .voz-nombre { margin: 0; font-size: 1rem; letter-spacing: -.02em; }
+    .voz-estado { margin: 0; font-size: .74rem; color: var(--mint); min-height: 1em; }
+    .voz-onda { display: flex; gap: 4px; align-items: center; height: 28px; }
+    .voz-onda span { display: block; width: 4px; background: var(--mint-strong); border-radius: 2px; height: 6px; opacity: .35; }
+    .voz-onda.on span { opacity: 1; animation: vozOnda 1.05s ease-in-out infinite; }
+    .voz-onda.on span:nth-child(1) { animation-delay: 0s; }
+    .voz-onda.on span:nth-child(2) { animation-delay: .15s; }
+    .voz-onda.on span:nth-child(3) { animation-delay: .3s; }
+    .voz-onda.on span:nth-child(4) { animation-delay: .45s; }
+    .voz-onda.on span:nth-child(5) { animation-delay: .6s; }
+    @keyframes vozOnda { 0%,100% { height: 6px; } 50% { height: 26px; } }
+    .voz-texto { min-height: 2.4em; font-size: .85rem; margin: 4px 0 0; }
+    .voz-respuesta { font-size: .84rem; color: var(--mint); min-height: 1.2em; margin: 0; font-style: italic; }
+    .voz-controles { display: flex; gap: 8px; margin-top: 8px; }
+    .voz-controles button { padding: 9px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface2); color: var(--text); font-size: .8rem; cursor: pointer; }
+    .voz-controles button.hablando { background: var(--mint-strong); color: #062010; border-color: var(--mint-strong); }
+    .voz-controles button.colgar { background: #431a1a; border-color: #8a3a3a; }
     .booking-intro { margin: 5px 2px 16px; }
     .booking-intro h2 { margin: 0; font-size: 1.45rem; letter-spacing: -.045em; }
     .booking-intro p { margin: 7px 0 0; color: var(--muted); font-size: .82rem; }
@@ -576,6 +610,26 @@
     </dialog>
     <footer class="footer"><span>Parking S2 · Modelo demostrativo</span><span>Los cambios se reinician al recargar la página</span></footer>
   </main>
+
+  <!-- ===== Asistente de voz ParkNet (voz web, libre) ===== -->
+  <button class="voz-boton" id="vozBoton" type="button" aria-label="Llamar al asistente ParkNet"
+          title="Toca para hablar con ParkNet">🎙</button>
+  <div class="voz-dialog" id="vozDialog" role="dialog" aria-modal="false" aria-label="Asistente de voz ParkNet" hidden>
+    <div class="voz-emisor">
+      <div class="voz-avatar" aria-hidden="true">🤖</div>
+      <p class="voz-nombre">Asistente ParkNet</p>
+      <p class="voz-estado" id="vozEstado">esperando…</p>
+      <div class="voz-onda" id="vozOnda" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <p class="voz-texto" id="vozTexto">Toca Hablar y diga, por ejemplo:<br>“ParkNet, ¿hay lugar?”</p>
+      <p class="voz-respuesta" id="vozRespuesta"></p>
+      <div class="voz-controles">
+        <button id="vozMic" type="button">🎙 Hablar</button>
+        <button class="colgar" id="vozColgar" type="button">Colgar</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     (function () {
@@ -1286,6 +1340,9 @@
         if (l) l.textContent = (d.libres != null ? d.libres : "–") + " / " + (d.total || 3) + " libres";
         var n = $("mqNota");
         if (n) n.textContent = "Señal de la placa a las " + new Date().toLocaleTimeString() + " (MQTT).";
+        if (window.__PN_ESTADO) {
+          window.__PN_ESTADO = { p1: d.ocupadas && d.ocupadas[0], p2: d.ocupadas && d.ocupadas[1], p3: d.ocupadas && d.ocupadas[2], barrera: d.barrera, libres: d.libres };
+        }
       }
       function mqConectar() {
         if (typeof mqtt === "undefined") return;
@@ -1358,6 +1415,127 @@
         }
       }
     }());
+
+    /* ===== Asistente de voz ParkNet =====
+       Corre completo en el navegador:
+       - SpeechRecognition (Chrome/Edge) entiende lo que dices
+       - speechSynthesis responde con voz
+       - Lee el estado del MQTT en vivo (ocupadas / libre) guardado en window.__PN_ESTADO
+       ===================================
+    */
+    (function () {
+      "use strict";
+      window.__PN_ESTADO = { p1: null, p2: null, p3: null, barrera: null, libres: null };
+      var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      var soporte = !!SR && !!window.speechSynthesis;
+      var $v = function (id) { return document.getElementById(id); };
+      var btn = $v("vozBoton"), dlg = $v("vozDialog"),
+          mic = $v("vozMic"), colgar = $v("vozColgar"),
+          estado = $v("vozEstado"), oda = $v("vozOnda"),
+          txt = $v("vozTexto"), resp = $v("vozRespuesta");
+      var rec = null, hablando = false;
+
+      function decir(frase, cb) {
+        if (!window.speechSynthesis) { if (cb) cb(); return; }
+        resp.textContent = "“" + frase + "”";
+        var u = new SpeechSynthesisUtterance(frase);
+        u.lang = "es-CL"; u.rate = 0.97; u.pitch = 1.05;
+        var voces = window.speechSynthesis.getVoices();
+        var pref = voces.find(function (v) { return /es(-CL|-US|-MX|-ES)/.test(v.lang); });
+        if (pref) u.voice = pref;
+        u.onend = function () { if (cb) cb(); };
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+      }
+      function escucharAhora() {
+        if (!soporte) { estado.textContent = "Este navegador no soporta voz."; return; }
+        if (hablando) return;
+        hablando = true; mic.classList.add("hablando"); mic.textContent = "…escuchando";
+        oda.classList.add("on"); estado.textContent = "te escucho…";
+        resp.textContent = "";
+        try {
+          rec = new SR();
+          rec.lang = "es-CL"; rec.interimResults = false; rec.maxAlternatives = 3;
+          rec.onresult = function (ev) {
+            var candidato = ev.results[0][0].transcript.trim();
+            txt.textContent = "Yo dije: “" + candidato + "”";
+            procesar(candidato.toLowerCase());
+          };
+          rec.onerror = function (ev) {
+            estado.textContent = "no te escuché bien";
+            terminar();
+          };
+          rec.onend = function () { terminar(); };
+          rec.start();
+        } catch (e) {
+          estado.textContent = "la voz no está disponible";
+          terminar();
+        }
+      }
+      function terminar() {
+        hablando = false; mic.classList.remove("hablando"); mic.textContent = "🎙 Hablar";
+        oda.classList.remove("on");
+        if (estado.textContent === "te escucho…") estado.textContent = "esperando…";
+      }
+      function abrir() {
+        dlg.hidden = false; btn.hidden = true;
+        if (soporte) {
+          decir("ParkNet a la orden, diga su consulta.", function () { escucharAhora(); });
+        } else {
+          estado.textContent = "mic no disponible";
+          txt.innerHTML = "Usa <b>Chrome o Edge</b> para hablar con ParkNet directamente desde el navegador.";
+        }
+      }
+      function cerrar() {
+        dlg.hidden = true; btn.hidden = false;
+        try { if (rec) rec.abort(); } catch (e) {}
+        window.speechSynthesis.cancel();
+        estado.textContent = "esperando…"; resp.textContent = "";
+        txt.innerHTML = "Toca Hablar y diga, por ejemplo:<br>“ParkNet, ¿hay lugar?”";
+        terminar();
+      }
+      btn.addEventListener("click", abrir);
+      colgar.addEventListener("click", cerrar);
+      mic.addEventListener("click", escucharAhora);
+
+      // Objeto de preguntas/respuestas con el estado de los sensores
+      function procesar(q) {
+        var e = window.__PN_ESTADO;
+        var libres = 0;
+        [e.p1, e.p2, e.p3].forEach(function (o) { if (o === 0) libres++; });
+        function respPlace() {
+          return "ParkNet informa: hay " + libres + " de 3 plazas libres en este momento. " +
+            (e.p1 === 0 ? "Plaza uno libre. " : "Plaza uno ocupada. ") +
+            (e.p2 === 0 ? "Plaza dos libre. " : "Plaza dos ocupada. ") +
+            (e.p3 === 0 ? "Plaza tres libre." : "Plaza tres ocupada.");
+        }
+        if (/(hay lugar|hay espacio|libres|libre|lugar)/.test(q)) { decir(respPlace()); return; }
+        if (/(reserv|apartar|agendar|aparcar|estacionar|lugar)/.test(q)) {
+          $$("bookingDate").focus();
+          decir("Toque la fecha, la hora y la plaza, luego confirme reservar en el formulario de abajo.");
+          document.getElementById("bookingForm").scrollIntoView({ behavior: "smooth", block: "start" });
+          return;
+        }
+        if (/(barrera|abrir|entrar|ingreso)/.test(q)) {
+          decir("La barrera se abre en la oficina con su QR de reserva, o directamente desde el panel del administrador.");
+          return;
+        }
+        if (/(precio|costo|tarifa|gratis|gratuito|cuanto)/.test(q)) {
+          decir("Hoy el estacionamiento es sin costo. Es una cortesía de la Feria de Informática 2026.");
+          return;
+        }
+        if (/(horario|hora de apertura|abre|abierto)/.test(q)) {
+          decir("ParkNet recibe vehículos todo el día para la feria, y atiende reservas en línea.");
+          return;
+        }
+        if (/(quien eres|que eres|asistente|robot|humano)/.test(q)) {
+          decir("Soy el asistente inteligente de ParkNet, estacionamiento inteligente del equipo Fixmol, el mejor de la feria.");
+          return;
+        }
+        decir("No entendí del todo. Probando: ¿hay lugar? ¿Cómo reservo? ¿A qué hora abre? ¿Cuánto cuesta?");
+      }
+      function $$ (id) { return document.getElementById(id); }
+    })();
   </script>
 </body>
 </html>

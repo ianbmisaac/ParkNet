@@ -851,9 +851,11 @@
       "use strict";
       var states = [null, null, null];
       var lastAt = 0;
-      // Igual que admin.html: P1_VISOR_INVERTIDO = true invierte la lectura
-      // del visor 3D de P1 para que coincida con el estado real del sensor.
-      var P1_VISOR_INVERTIDO = true;
+      // El firmware ya entrega P1 con la polaridad correcta (0 = LIBRE,
+      // 1 = OCUPADA). Si se invierte aqui, el visor 3D muestra un auto en A1
+      // cuando la plaza esta libre. Se deja en false; la constante queda por
+      // si algun dia hay que compensar un sensor distinto.
+      var P1_VISOR_INVERTIDO = false;
       var $ = function (id) { return document.getElementById(id); };
       function clock() {
         $("hora").textContent = new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });

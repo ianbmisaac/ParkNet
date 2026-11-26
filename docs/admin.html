@@ -175,8 +175,8 @@
       <div class="row"><span>Plazas</span><span id="libres" class="warn">–</span></div>
       <div>
         <span class="chip" id="p1">P1 (D13): –</span>
-        <span class="chip" id="p2">P2 (D6): –</span>
-        <span class="chip" id="p3">P3 (D2): –</span>
+        <span class="chip" id="p2">P2 (virtual): –</span>
+        <span class="chip" id="p3">P3 (virtual): –</span>
         <span class="chip" id="barrChip">Barrera: –</span>
         <span class="chip" id="alertaChip" style="display:none;border-color:#d29922;color:#d29922;animation:pulsa 1s infinite">🚨 AUTO ENTRANDO (slot 1)</span>
         <span class="chip" id="tsTxt" style="border-style:dashed">sin señal</span>
@@ -295,12 +295,11 @@ const $ = id => document.getElementById(id);
 let user = null, esAdmin = false, slotsViews = [], resView = null;
 
 /* === Visor 3D: reaccion del auto de P1 ===
-   TRUE  = el carro entra cuando el sensor esta OBSTRUIDO (plaza ocupada)
-   FALSE = el carro entra cuando el sensor esta despejado (si en tu
-           protoboard el modulo KY-033 termina Actuando inverso, gira esto;
-           solo cambia el visor 3D, nunca los chips de estado ni la alarma)
-   P2/P3 no se tocan: siguen el estado de la placa tal cual. */
-const P1_VISOR_INVERTIDO = true;
+   El firmware ya reporta 0 = LIBRE y 1 = OCUPADA con la polaridad correcta,
+   asi que el visor NO debe invertir P1. Si algun dia cambias a un sensor de
+   polaridad opuesta, pon esto en true (solo afecta al visor 3D, nunca a los
+   chips de estado ni a la alarma). P2/P3 siguen el estado de la placa. */
+const P1_VISOR_INVERTIDO = false;
 // con que doc demonos el rol y cuando pasamos la ultima verificacion en vivo
 let adminDocTipo = "uid";        // "uid" | "correo"
 let adminVerificadoEn = 0;       // Date.now() del ultimo pase
@@ -716,6 +715,9 @@ let cli = null, idxB = 0, timerB = null, ultimoSeñal = 0, timerSalud = null;
 /* ===== Simulación por plaza (sobreescribe sensores reales) ===== */
 let modoSimulacion = false;
 let estadoSimulado = { ocupadas: [0, 0, 0], barrera: "CERRADA" };
+// Ultimo estado real que reporto la placa: la simulacion arranca desde lo
+// que se ve en ese momento, no desde cero.
+let ultimoEstadoReal = { ocupadas: [0, 0, 0], barrera: "CERRADA" };
 
 function simAplicarUI() {
   const simBtns = [ $("simP1"), $("simP2"), $("simP3") ];
@@ -756,7 +758,11 @@ function simActivar(activar) {
     b.textContent = "Simulación: ON";
     est.textContent = "sobrescribe sensores";
     btns.forEach(b => b.style.opacity = "1");
-    // arranca el estado simulado desde el último estado real conocido
+    // arranca el estado simulado desde el ultimo estado real conocido
+    estadoSimulado = {
+      ocupadas: ultimoEstadoReal.ocupadas.slice(),
+      barrera: ultimoEstadoReal.barrera
+    };
     simAplicarUI();
     logM("🎭 Modo SIMULACIÓN activado — plaza controlada desde admin");
   } else {
@@ -765,8 +771,8 @@ function simActivar(activar) {
     est.textContent = "sensores reales";
     btns.forEach(b => b.style.opacity = "0.45");
     logM("🎭 Modo SIMULACIÓN desactivado — vuelve a sensores reales");
-    // pide al Arduino que reenvíe su estado real
-    enviar({ cmd: "sync" });
+    // suelta las plazas simuladas en el Arduino y pide el estado real
+    enviar({ cmd: "sensores" });
   }
 }
 
@@ -851,11 +857,17 @@ function conectarMqtt() {
           // en simulación las plazas vienen del estado local simulado
           simAplicarUI();
         } else {
+          // Guarda el ultimo estado real para que la simulacion arranque
+          // desde lo que se ve ahora.
+          ultimoEstadoReal = {
+            ocupadas: [ d.ocupadas[0]||0, d.ocupadas[1]||0, d.ocupadas[2]||0 ],
+            barrera: d.barrera
+          };
           $("libres").textContent = d.libres + " / " + d.total + " libres";
           pinta("p1", (d.ocupadas[0]||0) === 1, "P1 (sensor)");
-          pinta("p2", (d.ocupadas[1]||0) === 1, "P2 (D6)");
+          pinta("p2", (d.ocupadas[1]||0) === 1, "P2 (virtual)");
           if (d.ocupadas[2] === 0 || d.ocupadas[2] === 1) {
-            pinta("p3", d.ocupadas[2] === 1, "P3");
+            pinta("p3", d.ocupadas[2] === 1, "P3 (virtual)");
           } else {
             $("p3").textContent = "P3: sin datos";
             $("p3").classList.remove("on");

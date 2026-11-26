@@ -54,15 +54,41 @@ unsigned long wifiUltimoIntento  = 0;
 unsigned long wifiProximoIntento = 0;
 unsigned long wifiProximoEscaneo = 0;
 
+// ---- REDES WIFI CONOCIDAS -------------------------------------------------
+// La principal es WIFI_SSID/WIFI_PASS (en parknet.ino). Aqui puedes anadir hasta 2
+// mas de respaldo (casa, instituto, feria...). El Arduino se une a la primera que vea.
+// Deja "" si no usas esa casilla.  (Tambien puedes definirlas en parknet.ino.)
+#ifndef WIFI_SSID2
+  #define WIFI_SSID2 ""
+  #define WIFI_PASS2 ""
+#endif
+#ifndef WIFI_SSID3
+  #define WIFI_SSID3 ""
+  #define WIFI_PASS3 ""
+#endif
+struct RedWifi { const char* ssid; const char* pass; };
+RedWifi wifiRedes[3] = { { WIFI_SSID, WIFI_PASS }, { WIFI_SSID2, WIFI_PASS2 }, { WIFI_SSID3, WIFI_PASS3 } };
+int wifiRedActual = 0;        // la proxima red a probar
+int wifiRedVisibleIdx = -1;   // la red conocida que se vio al escanear
+
 void wifiEscanear();          // (definida mas abajo)
 
 // Intenta unirse a la red del usuario. NO bloquea: el modulo trabaja solo
 // y comprobamos el resultado en las siguientes vueltas del loop.
 void wifiIntentarSTA() {
+  int j = wifiRedVisibleIdx;                    // primero la que se ha visto en el aire
+  if (j < 0) {                                  // si no, vamos rotando por las que tengan nombre
+    for (int k = 0; k < 3; k++) {
+      int c = (wifiRedActual + k) % 3;
+      if (wifiRedes[c].ssid[0]) { j = c; break; }
+    }
+    if (j < 0) j = 0;
+    wifiRedActual = (j + 1) % 3;
+  }
   Serial.print(F("[WIFI] buscando '"));
-  Serial.print(WIFI_SSID);
+  Serial.print(wifiRedes[j].ssid);
   Serial.println(F("'..."));
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  WiFi.begin(wifiRedes[j].ssid, wifiRedes[j].pass);
 }
 
 // Levanta nuestra propia red "ParkNet" (el plan B: siempre se puede entrar)
@@ -101,6 +127,18 @@ void wifiReintentar() {
 #if WIFI_MODO_AP
   return;
 #else
+  // 0) el modulo se conecta solo en segundo plano: si ya estamos dentro y aun no nos
+  //    habiamos dado cuenta, lo damos por bueno (antes se perdia y acababa en red propia).
+  //    Ojo: status() puede decir WL_CONNECTED antes de que el DHCP entregue la IP;
+  //    esperamos a tener IP real para no anunciar 0.0.0.0.
+  if (!wifiConectado && !wifiAPActivo && WiFi.status() == WL_CONNECTED &&
+      (uint32_t)WiFi.localIP() != 0) {
+    wifiConectado = true;
+    Serial.print(F("[WIFI] CONECTADO a la red. IP del Arduino: "));
+    Serial.println(WiFi.localIP());
+    return;
+  }
+
   // A) ya estamos dentro de la red del usuario -> solo vigilamos que no se caiga
   if (wifiConectado) {
     if (WiFi.status() == WL_CONNECTED) return;
@@ -129,8 +167,8 @@ void wifiReintentar() {
   wifiIntentarSTA();
   wifiProximoIntento = ahora + 60000;
 
-  // C2) si ha entrado, avisamos con la IP
-  if (WiFi.status() == WL_CONNECTED && !wifiConectado) {
+  // C2) si ha entrado y ya tiene IP, avisamos
+  if (WiFi.status() == WL_CONNECTED && (uint32_t)WiFi.localIP() != 0 && !wifiConectado) {
     wifiConectado = true;
     wifiAPActivo = false;
     Serial.print(F("[WIFI] CONECTADO a la red. IP del Arduino: "));
@@ -153,6 +191,7 @@ void wifiReintentar() {
 void wifiEscanear() {
   int n = WiFi.scanNetworks();
   wifiRedVisible = false;
+  wifiRedVisibleIdx = -1;
   Serial.print(F("[WIFI] redes vistas: "));
   Serial.println(n);
   for (int i = 0; i < n && i < 12; i++) {
@@ -161,7 +200,12 @@ void wifiEscanear() {
     Serial.print(F("'  cifrado: "));
     Serial.print(WiFi.encryptionType(i));
     Serial.println();
-    if (strcmp(WiFi.SSID(i), WIFI_SSID) == 0) wifiRedVisible = true;
+    for (int j = 0; j < 3; j++) {
+      if (wifiRedes[j].ssid[0] && strcmp(WiFi.SSID(i), wifiRedes[j].ssid) == 0) {
+        wifiRedVisible = true;
+        if (wifiRedVisibleIdx < 0) wifiRedVisibleIdx = j;
+      }
+    }
   }
   Serial.println(F("[WIFI]   (0=abierta 1=WEP 2=WPA 3=WPA2 4=WPA/WPA2 5=WPA3 6=WPA2/WPA3)"));
 }
@@ -170,7 +214,7 @@ void wifiResponder(int codigo, const String& tipo, const String& cuerpo) {
   wifiCli.print(F("HTTP/1.1 "));
   wifiCli.print(codigo);
   wifiCli.print(F(" "));
-  wifiCli.println(tipo);
+  wifiCli.println(F("OK"));
   wifiCli.print(F("Content-Type: "));
   wifiCli.println(tipo);
   wifiCli.print(F("Content-Length: "));
@@ -202,7 +246,11 @@ void wifiServidor() {
     if (!wifiCli) return;
     wifiPeticion = ""; wifiCabecera = ""; wifiCuerpo = ""; wifiProcesado = false;
     unsigned long t0 = millis();
-    while (wifiCli.connected() && millis() - t0 < 1500) {
+    // No condicionar a connected(): curl/PowerShell pueden cerrar su lado de
+    // escritura al terminar la peticion y el WiFiClient pasa a "desconectado"
+    // aunque las cabeceras y el cuerpo sigan en el buffer. Leemos por tiempo
+    // hasta la linea en blanco.
+    while (millis() - t0 < 1500) {
       String ln = wifiCli.readStringUntil('\n');
       // una linea vacia (solo el \r) marca el final de las cabeceras.
       // OJO: si no se corta aqui, el bucle se come el CUERPO de la peticion.
@@ -213,12 +261,13 @@ void wifiServidor() {
     }
     if (wifiPeticion.startsWith("POST")) {
       int pos = wifiCabecera.indexOf("Content-Length:");
+      if (pos < 0) pos = wifiCabecera.indexOf("content-length:");
       int len = 0;
-      if (pos > 0) len = wifiCabecera.substring(pos + 15).toInt();
+      if (pos >= 0) len = wifiCabecera.substring(pos + 15).toInt();
       // el cuerpo puede tardar unos ms en llegar: esperamos (con margen)
       unsigned long tb = millis();
-      while (wifiCuerpo.length() < len && millis() - tb < 1500) {
-        if (wifiCli.available()) wifiCuerpo += wifiCli.read();
+      while ((int)wifiCuerpo.length() < len && millis() - tb < 1500) {
+        if (wifiCli.available()) wifiCuerpo += (char)wifiCli.read();
         else delay(5);
       }
       Serial.print(F("[WIFI] POST "));
@@ -236,8 +285,8 @@ void wifiServidor() {
 
   if (wifiPeticion.startsWith("GET /api/state")) {
     char buf[160];
-    snprintf(buf, sizeof(buf), "{\"ocupadas\":[%d,%d],\"libres\":%d,\"total\":%d,\"barrera\":\"%s\",\"lcd\":\"%s\"}",
-                     slotOccupied[0] ? 1 : 0, slotOccupied[1] ? 1 : 0,
+    snprintf(buf, sizeof(buf), "{\"ocupadas\":[%d,%d,%d],\"libres\":%d,\"total\":%d,\"barrera\":\"%s\",\"lcd\":\"%s\"}",
+                     slotOccupied[0] ? 1 : 0, slotOccupied[1] ? 1 : 0, slotOccupied[2] ? 1 : 0,
                      plazasLibres(), NUM_SLOTS,
                      barreraAbierta ? "ABIERTA" : "CERRADA",
                      lcdModo ? "fixmol" : "datos");

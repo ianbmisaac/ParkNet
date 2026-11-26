@@ -1,5 +1,5 @@
 // =====================================================
-// ParkNet 3.0 - Estacionamiento Inteligente (2 plazas)
+// ParkNet 3.0 - Estacionamiento Inteligente (3 plazas: 1 sensor + 2 virtuales)
 // Equipo Fixmol - Internet de las Cosas
 // =====================================================
 // SISTEMA:
@@ -84,13 +84,14 @@
 #define LCD_ROT_MS 4000   // cada cuanto rota el detalle de la 2a linea (ms)
 
 // --- CONFIGURACION ---
-#define NUM_SLOTS      2
-#define MAX_SLOTS      2
+#define NUM_SLOTS      3
+#define MAX_SLOTS      3
 #define SERIAL_BAUD 115200
 
 // Slot 1 = sensor fisico | Slot 2 = plaza virtual (la controla el PC)
 #define SLOT_SENSOR 0
 #define SLOT_VIRTUAL 1
+#define SLOT_VIRTUAL2 2   // plaza 3: tambien virtual (la controla la pagina)
 
 // --- PINES ---
 //   plaza 1: sensor pin 13 | LED pin 12
@@ -126,24 +127,29 @@ unsigned long servoSeMovio = 0;
 
 // --- ARRAYS ---
 // int8_t (1 byte) en vez de int (2 bytes) para ahorrar RAM en el UNO
-int8_t pinSensor[MAX_SLOTS] = { IR_SLOT_1, -1 };
-int8_t pinLed[MAX_SLOTS]    = { 12, 10 };
+int8_t pinSensor[MAX_SLOTS] = { IR_SLOT_1, -1, -1 };
+// LED de la plaza 3: pon aqui el pin si le conectas uno (-1 = sin LED)
+int8_t pinLed[MAX_SLOTS]    = { 12, 11, 8 };   // LEDs reales: P1=12, P2=11, P3=8
 
 // --- OBJETOS ---
 Servo    barrera;
 LiquidCrystal_I2C lcd(LCD_ADDR, LCD_COLS, 2);
 
 // --- ESTADO ---
-bool slotOccupied[MAX_SLOTS] = { false, false };
+bool slotOccupied[MAX_SLOTS] = { false, false, false };
 
 // -1 = lo decide el sensor real | 0 = libre forzado | 1 = ocupada forzada
-int slotOvr[MAX_SLOTS] = { -1, -1 };
+int slotOvr[MAX_SLOTS] = { -1, -1, -1 };
+
+// Luces de las plazas: 0 = automatico (encendido = libre),
+// 1 = todas encendidas, 2 = todas apagadas (botones Luces del admin).
+uint8_t ledsModo = 0;
 
 bool barreraAbierta = false;
 
 // Filtro antirrebote del sensor: valor confirmado y lecturas que lo confirman.
-int8_t  filtroValor[MAX_SLOTS] = { 0, 0 };
-uint8_t filtroVeces[MAX_SLOTS] = { 0, 0 };
+int8_t  filtroValor[MAX_SLOTS] = { 0, 0, 0 };
+uint8_t filtroVeces[MAX_SLOTS] = { 0, 0, 0 };
 
 // Pantalla
 uint8_t lcdLinea = 0;        // linea visible (0 o 2)
@@ -182,9 +188,12 @@ bool leerSlot(int i) {
 // LED por plaza: ENCENDIDO = LIBRE
 void actualizarLeds() {
   for (int i = 0; i < NUM_SLOTS; i++) {
-    if (pinLed[i] >= 0) {
-      digitalWrite(pinLed[i], slotOccupied[i] ? LOW : HIGH);
-    }
+    if (pinLed[i] < 0) continue;
+    bool encendido;
+    if (ledsModo == 1)      encendido = true;    // Luces: ON  (todas)
+    else if (ledsModo == 2) encendido = false;   // Luces: OFF (todas)
+    else                    encendido = !slotOccupied[i];  // AUTO: LED on = libre
+    digitalWrite(pinLed[i], encendido ? HIGH : LOW);
   }
 }
 
@@ -213,7 +222,7 @@ void lcdPintar() {
     switch (lcdLinea % 3) {
       case 0:  extra = "ESTACIONAMIENTO"; break;
       case 1:  extra = "INTELIGENTE IoT";  break;
-      default: extra = "  2 PLAZAS  ";       break;
+      default: extra = "  3 PLAZAS  ";       break;
     }
     lcdPonerLinea(1, extra);
   } else {
@@ -225,6 +234,8 @@ void lcdPintar() {
       snprintf(buf, sizeof(buf), "P1: %s", slotOccupied[0] ? "OCUPADA" : "LIBRE");
     } else if (lcdLinea == 1) {
       snprintf(buf, sizeof(buf), "P2: %s", slotOccupied[1] ? "OCUPADA" : "LIBRE");
+    } else if (lcdLinea == 2) {
+      snprintf(buf, sizeof(buf), "P3: %s", slotOccupied[2] ? "OCUPADA" : "LIBRE");
     } else {
       snprintf(buf, sizeof(buf), "BARRERA: %s", barreraAbierta ? "ABIERTA" : "CERRADA");
     }
@@ -237,7 +248,7 @@ void lcdActualizar() {
   unsigned long ahora = millis();
   if (ahora - lcdTic >= LCD_ROT_MS) {
     lcdTic = ahora;
-    lcdLinea = (lcdLinea + 1) % 3;
+    lcdLinea = (lcdLinea + 1) % 4;
     lcdPintar();
   }
 }
@@ -445,6 +456,23 @@ void ejecutarComando(const char* cmd) {
     return;
   }
 
+  // --- Luces de las plazas: ON / OFF / AUTO (botones del admin) ---
+  if (strstr(cmd, "\"luces\"")) {
+    if (strstr(cmd, "\"ON\"")) {
+      ledsModo = 1;
+      Serial.println(F("[PC] Luces: TODAS ENCENDIDAS"));
+    } else if (strstr(cmd, "\"OFF\"")) {
+      ledsModo = 2;
+      Serial.println(F("[PC] Luces: TODAS APAGADAS"));
+    } else {
+      ledsModo = 0;
+      Serial.println(F("[PC] Luces: AUTOMATICAS (LED on = libre)"));
+    }
+    actualizarLeds();
+    enviarEstado(NULL);
+    return;
+  }
+
   if (strstr(cmd, "\"sync\"")) {
     enviarEstado(NULL);
     return;
@@ -648,6 +676,7 @@ void setup() {
   Serial.println();
   Serial.println(F("  PLAZA 1: sensor IR (interrumpelo y sale OCUPADA) + LED pin 12"));
   Serial.println(F("  PLAZA 2: solo LED pin 10, se simula desde la pagina web"));
+  Serial.println(F("  PLAZA 3: virtual (sin sensor), se simula desde la pagina web"));
   Serial.println();
   Serial.println(F("  CABLEADO (con la placa desconectada):"));
   Serial.println(F("    plaza 1: sensor pin 13 | LED pin 12 (resistencia 330-470 ohm)"));

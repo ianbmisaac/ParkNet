@@ -659,8 +659,9 @@
       .booking-card { padding: 16px; }
     }
   </style>
+  <link rel="stylesheet" href="./parknet-fx.css?v=feria1">
 </head>
-<body>
+<body class="pn-index">
   <main class="shell">
     <header class="topbar">
       <div class="brand">
@@ -758,6 +759,7 @@
       <div class="booking-intro">
         <h2>Reserva tu espacio</h2>
         <p>Elige fecha, hora y lugar. Cada reserva ocupa un bloque de una hora.</p>
+        <span class="pn-feria"><i aria-hidden="true"></i>Reservas abiertas a cualquier hora · sin restricciones de horario</span>
       </div>
       <div class="booking-card" style="margin-bottom:14px" aria-label="Estado en vivo del estacionamiento">
         <h3>Estado en vivo del estacionamiento</h3>
@@ -780,7 +782,7 @@
             <label class="field">Fecha<input id="bookingDate" type="date" required></label>
             <label class="field">Hora de inicio<input id="bookingTime" type="time" step="3600" required></label>
           </fieldset>
-          <p class="duration-note">Bloques de 1 hora · Los minutos siempre se muestran <strong>:00</strong> (ej. 03:00 = 03:00–04:00). Puedes reservar la hora en curso.</p>
+          <p class="duration-note">Bloques de 1 hora · Los minutos siempre se muestran <strong>:00</strong> (ej. 03:00 = 03:00–04:00). Puedes reservar <strong>a cualquier hora</strong>, sin restricciones.</p>
           <h3>Selecciona un espacio</h3>
           <div class="space-picker" id="spaceChoices" role="group" aria-label="Selecciona un estacionamiento"></div>
           <button class="reserve-button" id="reserveButton" type="submit" disabled>Reservar espacio</button>
@@ -993,10 +995,10 @@
       function validSlot() {
         var date = $("bookingDate").value;
         var time = $("bookingTime").value;
-        if (!date || !time || date < localDate(new Date())) return false;
-        // a partir de la hora actual sí se puede reservar
-        if (date > localDate(new Date())) return true;
-        return Number(time.slice(0, 2)) >= new Date().getHours();
+        // MODO FERIA: sin restricción de hora. Se puede reservar cualquier
+        // bloque horario de hoy (incluso uno ya pasado) o de días futuros.
+        // Solo se exige una fecha y una hora válidas, y que el día no sea anterior a hoy.
+        return !!(date && time && date >= localDate(new Date()));
       }
       function setMessage(message, kind) {
         var element = $("bookingStatus");
@@ -1007,7 +1009,7 @@
       function initializeDateTime() {
         var now = new Date();
         $("bookingDate").min = localDate(now);
-        // La reserva es por bloque horario: se permite la HORA EN CURSO.
+        // MODO FERIA: cualquier hora del día es reservable (sin bloqueo por hora).
         // Los minutos se fuerzan a :00 a proposito (03:50 -> bloque 03:00-04:00).
         $("bookingDate").value = localDate(now);
         $("bookingTime").value = pad(now.getHours()) + ":00";
@@ -1037,7 +1039,7 @@
           return;
         }
         if (loading || !validSlot()) {
-          addAvailabilityMessage(loading ? "Consultando disponibilidad…" : "Elige una fecha y hora válidas (bloques de 1 hora).");
+          addAvailabilityMessage(loading ? "Consultando disponibilidad…" : "Elige una fecha (de hoy en adelante) y una hora (bloques de 1 hora).");
           return;
         }
         spaces.forEach(function (spaceId, index) {
@@ -1311,7 +1313,7 @@
         var date = $("bookingDate").value;
         var hour = hourValue();
         var spaceId = selectedSpace;
-        if (!validSlot()) { setMessage("Elige una fecha y hora válidas (bloques de 1 hora).", "error"); return; }
+        if (!validSlot()) { setMessage("Elige una fecha (de hoy en adelante) y una hora (bloques de 1 hora).", "error"); return; }
         var key = slotKey(spaceId, date, hour);
         var slotRef = db.collection("slots").doc(key);
         var bookings = db.collection("users").doc(user.uid).collection("reservations");
@@ -1716,5 +1718,6 @@
       function $$ (id) { return document.getElementById(id); }
     })();
   </script>
+  <script src="./parknet-fx.js?v=feria1"></script>
 </body>
 </html>

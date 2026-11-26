@@ -47,11 +47,21 @@
 <script src="https://cdn.jsdelivr.net/npm/mqtt@5/dist/mqtt.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./parknet-fx.css?v=feria1">
 </head>
-<body>
-<header>
-  <h1>🛠️ ParkNet — Administración</h1>
-  <div class="sub">Equipo Fixmol · Feria de Informática 2026 · reservas (Firebase) + hardware (MQTT)</div>
+<body class="pn-admin">
+<header class="pn-head">
+  <div class="pn-brand">
+    <div class="pn-mark" aria-hidden="true">P</div>
+    <div>
+      <h1>ParkNet <span>Administración</span></h1>
+      <div class="sub">Equipo Fixmol · Feria de Informática 2026 · reservas (Firebase) + hardware (MQTT)</div>
+    </div>
+  </div>
+  <div class="pn-headpill warn" id="pnHeadPill"><i aria-hidden="true"></i><span>Conectando hardware…</span></div>
 </header>
 <main>
 
@@ -1056,5 +1066,6 @@ document.addEventListener("visibilitychange", () => {
 });
 conectarMqtt();
 </script>
+  <script src="./parknet-fx.js?v=feria1"></script>
 </body>
 </html>
